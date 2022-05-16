@@ -17,8 +17,7 @@ namespace GenieClient
         private static string GitHubClientReleaseURL = @"https://api.github.com/repos/GenieClient/Genie4/releases/latest";
         private static string UpdaterFilename = @"Lamp.exe";
         private static string LocalUpdater = @$"{Environment.CurrentDirectory}\{UpdaterFilename}";
-        private static HttpClient client = new HttpClient();
-
+        static readonly HttpClient client = new HttpClient();
         public static string LocalUpdaterVersion
         {
             get

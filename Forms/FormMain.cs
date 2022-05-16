@@ -157,7 +157,7 @@ namespace GenieClient
                 string game = "";
                 string host = "";
                 int port = 0;
-                string[] parameters = ConnectionParameters[0].Split(@"/",StringSplitOptions.RemoveEmptyEntries);
+                string[] parameters = ConnectionParameters[0].Split(@"/", StringSplitOptions.RemoveEmptyEntries);
                 foreach (string parameter in parameters)
                 {
                     switch (parameter[0])
