@@ -135,7 +135,7 @@ namespace GenieClient
         private bool m_bNameListOnly = false;
         private int m_iMaxBufferSize = 500000;
         private bool m_bIsMainWindow = false;
-
+       
         public bool IsMainWindow
         {
             get
@@ -313,12 +313,12 @@ namespace GenieClient
                     var argoColor = Color.Transparent;
                     var argoBgColor = Color.Transparent;
                     Font argoFont = null;
-                    var newLineVar = Constants.vbNewLine;
+                    var newLineVar = System.Environment.NewLine;
                     AddToBuffer(newLineVar, argoColor, argoBgColor, false, oFont: argoFont);
                     m_bPendingNewLine = false;
                 }
 
-                if (sText.EndsWith(Constants.vbNewLine))
+                if (sText.EndsWith(System.Environment.NewLine))
                 {
                     if (m_bIsMainWindow == false)
                     {
@@ -367,10 +367,18 @@ namespace GenieClient
             {
                 m_oRichTextBuffer.SelectionColor = oColor;
             }
+            else
+            {
+                m_oRichTextBuffer.SelectionColor = m_oRichTextBuffer.ForeColor;
+            }
 
             if (oBgColor != Color.Transparent & oBgColor != m_oEmptyColor)
             {
                 m_oRichTextBuffer.SelectionBackColor = oBgColor;
+            }
+            else
+            {
+                m_oRichTextBuffer.SelectionBackColor = m_oRichTextBuffer.BackColor;
             }
 
             if (!Information.IsNothing(oFont))
@@ -388,7 +396,7 @@ namespace GenieClient
 
             if (sText.Length > 0)
             {
-                m_oRichTextBuffer.SelectedText = sText; 
+                m_oRichTextBuffer.SelectedText = sText;
                 ParseLineHighlight(iStart, sText);
             }
         }
@@ -396,7 +404,7 @@ namespace GenieClient
         private void ParseLineHighlight(int iStart, string sLine)
         {
             Genie.Globals.HighlightRegExp.Highlight oHighlight;
-            MatchCollection oMatchCollection;
+            MatchCollection oMatchCollection;            
             if (Conversions.ToBoolean(m_oParentForm.Globals.HighlightRegExpList.AcquireReaderLock()))
             {
                 try
@@ -476,6 +484,52 @@ namespace GenieClient
         {
             MatchCollection oMatchCollection;
 
+            if (m_oRichTextBuffer.Text.Contains("You also see"))
+            {
+                if (!Information.IsNothing(m_oParentForm.Globals.MonsterListRegEx))
+                {
+                    oMatchCollection = (MatchCollection)m_oParentForm.Globals.MonsterListRegEx.Matches(m_oRichTextBuffer.Text);
+                    foreach (Match oMatch in oMatchCollection)
+                    {
+                        m_oRichTextBuffer.SelectionStart = oMatch.Groups[1].Index;
+                        m_oRichTextBuffer.SelectionLength = oMatch.Groups[1].Length;
+                        if (!Operators.ConditionalCompareObjectEqual(m_oParentForm.Globals.PresetList["creatures"].FgColor, Color.Transparent, false))
+                        {
+                            m_oRichTextBuffer.SelectionColor = (Color)m_oParentForm.Globals.PresetList["creatures"].FgColor;
+                        }
+
+                        if (!Operators.ConditionalCompareObjectEqual(m_oParentForm.Globals.PresetList["creatures"].BgColor, Color.Transparent, false))
+                        {
+                            m_oRichTextBuffer.SelectionBackColor = (Color)m_oParentForm.Globals.PresetList["creatures"].BgColor;
+                        }
+                    }
+                }
+            }
+
+            // Presets and Bold
+            if (m_oParentForm.Globals.VolatileHighlights.Count > 0)
+            {
+                int volatilePosition = 0;
+                foreach (KeyValuePair<string, string> highlight in m_oParentForm.Globals.VolatileHighlights.ToArray())
+                {
+                    if (m_oRichTextBuffer.Text.Substring(volatilePosition).Contains(highlight.Value))
+                    {
+                        m_oRichTextBuffer.SelectionStart = m_oRichTextBuffer.Text.IndexOf(highlight.Value, volatilePosition);
+                        m_oRichTextBuffer.SelectionLength = highlight.Value.Length;
+                        if (!Operators.ConditionalCompareObjectEqual(m_oParentForm.Globals.PresetList[highlight.Key].FgColor, Color.Transparent, false))
+                        {
+                            m_oRichTextBuffer.SelectionColor = (Color)m_oParentForm.Globals.PresetList[highlight.Key].FgColor;
+                        }
+
+                        if (!Operators.ConditionalCompareObjectEqual(m_oParentForm.Globals.PresetList[highlight.Key].BgColor, Color.Transparent, false))
+                        {
+                            m_oRichTextBuffer.SelectionBackColor = (Color)m_oParentForm.Globals.PresetList[highlight.Key].BgColor;
+                        }
+                        volatilePosition += highlight.Value.Length;
+                    }
+                }
+            }
+
             // Highlight String
             if (!Information.IsNothing(m_oParentForm.Globals.HighlightList.RegexString))
             {
@@ -513,7 +567,7 @@ namespace GenieClient
                 m_oRichTextBuffer.SelectionLength = oMatch.Length;
                 string sOldText = m_oRichTextBuffer.SelectedText;
                 string sNewText = oMatch.Groups[1].Value;
-                string sCommand = oMatch.Groups[2].Value;
+                string sCommand = oMatch.Groups[2].Value + "!#";
                 int iDiff = sOldText.Length - sNewText.Length;
                 var link = new Link();
                 link.Index = m_oRichTextBuffer.SelectionStart;
@@ -544,28 +598,6 @@ namespace GenieClient
                         if (oName.BgColor != Color.Transparent & oName.FgColor != m_oEmptyColor)
                         {
                             m_oRichTextBuffer.SelectionBackColor = oName.BgColor;
-                        }
-                    }
-                }
-            }
-
-            if (m_oRichTextBuffer.Text.Contains("You also see"))
-            {
-                if (!Information.IsNothing(m_oParentForm.Globals.MonsterListRegEx))
-                {
-                    oMatchCollection = (MatchCollection)m_oParentForm.Globals.MonsterListRegEx.Matches(m_oRichTextBuffer.Text);
-                    foreach (Match oMatch in oMatchCollection)
-                    {
-                        m_oRichTextBuffer.SelectionStart = oMatch.Groups[1].Index;
-                        m_oRichTextBuffer.SelectionLength = oMatch.Groups[1].Length;
-                        if (!Operators.ConditionalCompareObjectEqual(m_oParentForm.Globals.PresetList["creatures"].FgColor, Color.Transparent, false))
-                        {
-                            m_oRichTextBuffer.SelectionColor = (Color)m_oParentForm.Globals.PresetList["creatures"].FgColor;
-                        }
-
-                        if (!Operators.ConditionalCompareObjectEqual(m_oParentForm.Globals.PresetList["creatures"].BgColor, Color.Transparent, false))
-                        {
-                            m_oRichTextBuffer.SelectionBackColor = (Color)m_oParentForm.Globals.PresetList["creatures"].BgColor;
                         }
                     }
                 }
@@ -676,7 +708,7 @@ namespace GenieClient
 
             if (text != "")
                 SelectedRtf = text;
-            
+
             bool bScroll = true;
             if (iFirstLineVisible + 2 >= m_iEndLine) // +2 extra lines
             {
@@ -821,7 +853,7 @@ namespace GenieClient
                 if (SelectionLength > 0)
                 {
                     string sTemp = SelectedText.ToString();
-                    sTemp = sTemp.Replace(Constants.vbLf, Constants.vbNewLine);
+                    sTemp = sTemp.Replace(Constants.vbLf, System.Environment.NewLine);
                     Clipboard.SetDataObject(sTemp, true);
                     SelectionLength = 0;
                 }
@@ -831,9 +863,9 @@ namespace GenieClient
                     FlushBuffer();
                 }
             }
-            #pragma warning disable CS0168
+#pragma warning disable CS0168
             catch (Exception ex)
-            #pragma warning restore CS0168
+#pragma warning restore CS0168
             {
             }
             // Ignore
@@ -859,11 +891,11 @@ namespace GenieClient
             }
 
             SelectionStart = position;
-            SelectedRtf = @"{\rtf1\ansi " + text + @"\v #" + hyperlink + @"\v0}";
+            SelectedRtf = @"{\rtf1\ansi " + text + @"\v #" + hyperlink + @"!#\v0}";
             Select(position, text.Length + hyperlink.Length + 1);
             SetSelectionLink(Handle, true);
             Select(position + text.Length + hyperlink.Length + 1, 0);
-            AppendText(Constants.vbNewLine);
+            AppendText(System.Environment.NewLine);
         }
 
         private void InsertLink(string hyperlink, int position, int length)
@@ -880,6 +912,7 @@ namespace GenieClient
                 SelectedRtf = @"{\rtf1\ansi " + SelectedText + @"\v #" + hyperlink + @"\v0}";
                 Select(position, length + hyperlink.Length + 1);
                 SetSelectionLink(Handle, true);
+                Select(Text.Length, 0); 
             }
         }
 

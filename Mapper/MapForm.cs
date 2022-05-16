@@ -46,7 +46,7 @@ namespace GenieClient.Mapper
         public event ClickNodeEventHandler ClickNode;
 
         public delegate void ClickNodeEventHandler(string zoneid, int nodeid);
-
+        private Genie.Globals m_oGlobals = null;
         private NodeList m_NodeList = null;
         private Node m_CurrentNode = null;
         private Node m_PathDestination = null;
@@ -57,11 +57,11 @@ namespace GenieClient.Mapper
 
         private static int m_Scale = 1;
 
-        public MapForm()
+        public MapForm(Genie.Globals Globals)
         {
             // This call is required by the Windows Form Designer.
             InitializeComponent();
-
+            m_oGlobals = Globals;
             // Add any initialization after the InitializeComponent() call.
         }
 
@@ -148,7 +148,7 @@ namespace GenieClient.Mapper
         private int _mapOffsetY;
         private Point3D GetOffset()
         {
-            if (m_NodeList is not null) return new Point3D(_mapOffsetX, _mapOffsetY);
+            if(m_NodeList is not null) return new Point3D(_mapOffsetX, _mapOffsetY);
             return new Point3D((int)(this.Width / 2 * m_Scale), (int)(this.Height / 2 * m_Scale));
         }
 
@@ -277,9 +277,9 @@ namespace GenieClient.Mapper
             {
                 ToolStripDropDownButtonMaps.DropDownItems.Clear();
                 _Zones.Clear();
-                var al = new SortedList(new INaturalComparer());
+                var sortedMapsList = new Genie.Collections.SortedList(new INaturalComparer());
                 int iunknown = 1;
-                var diDirectory = new DirectoryInfo(LocalDirectory.Path + @"\Maps");
+                var diDirectory = new DirectoryInfo(m_oGlobals.Config.MapDir);
                 foreach (FileInfo dif in diDirectory.GetFiles())
                 {
                     if ((dif.Extension.ToLower() ?? "") == ".xml")
@@ -291,27 +291,27 @@ namespace GenieClient.Mapper
                             iunknown += 1;
                         }
 
-                        if (al.ContainsKey(sName) == false)
+                        if (sortedMapsList.ContainsKey(sName) == false)
                         {
-                            al.Add(sName, dif.FullName);
+                            sortedMapsList.Add(sName, dif.FullName);
                         }
                     }
                 }
 
-                foreach (string s in al.Keys)
+                foreach (string s in sortedMapsList.Keys)
                 {
                     var mi = new ToolStripMenuItem();
                     mi.Text = s;
-                    mi.Tag = al[s].ToString();
+                    mi.Tag = sortedMapsList[s].ToString();
                     mi.Click += ToolStripMenuItemMapButton_Click;
                     ToolStripDropDownButtonMaps.DropDownItems.Add(mi);
                 }
 
                 return true;
             }
-#pragma warning disable CS0168
+            #pragma warning disable CS0168
             catch (Exception ex)
-#pragma warning restore CS0168
+            #pragma warning restore CS0168
             {
                 return false;
             }
@@ -532,7 +532,7 @@ namespace GenieClient.Mapper
                 XmlNodeList xnlist;
                 if (sPath.Contains(@"\") == false)
                 {
-                    sPath = LocalDirectory.Path + @"\Maps\" + sPath;
+                    sPath = m_oGlobals.Config.MapDir + @"\" + sPath;
                 }
 
                 xdoc = new XmlDocument();
@@ -574,9 +574,9 @@ namespace GenieClient.Mapper
 
                 return sReturn;
             }
-#pragma warning disable CS0168
+            #pragma warning disable CS0168
             catch (Exception ex)
-#pragma warning restore CS0168
+            #pragma warning restore CS0168
             {
                 return string.Empty;
             }
@@ -609,7 +609,7 @@ namespace GenieClient.Mapper
                 XmlNodeList xnlist;
                 if (sPath.Contains(@"\") == false)
                 {
-                    sPath = LocalDirectory.Path + @"\Maps\" + sPath;
+                    sPath = m_oGlobals.Config.MapDir + "\\" + sPath;
                 }
 
                 if (sPath.Length == 0)
@@ -825,7 +825,7 @@ namespace GenieClient.Mapper
                 m_NodeList.FixArcLinks();
                 UpdateMapSize(true);
                 var m_Offset = GetOffset();
-                m_Offset = m_NodeList.GetOffset();
+                    m_Offset = m_NodeList.GetOffset();
                 m_Offset.X *= m_Scale;
                 m_Offset.Y *= m_Scale;
                 _mapOffsetX = m_Offset.X;
@@ -850,9 +850,9 @@ namespace GenieClient.Mapper
 
                 return true;
             }
-#pragma warning disable CS0168
+            #pragma warning disable CS0168
             catch (Exception ex)
-#pragma warning restore CS0168
+            #pragma warning restore CS0168
             {
                 return false;
             }
@@ -979,9 +979,9 @@ namespace GenieClient.Mapper
                 xw.Close();
                 return true;
             }
-#pragma warning disable CS0168
+            #pragma warning disable CS0168
             catch (Exception ex)
-#pragma warning restore CS0168
+            #pragma warning restore CS0168
             {
                 return false;
             }
@@ -996,7 +996,7 @@ namespace GenieClient.Mapper
             }
             else
             {
-                SaveFileDialog1.InitialDirectory = LocalDirectory.Path + @"\Maps";
+                SaveFileDialog1.InitialDirectory = m_oGlobals.Config.MapDir;
             }
 
             if (SaveFileDialog1.ShowDialog() == DialogResult.OK)
@@ -1894,7 +1894,7 @@ namespace GenieClient.Mapper
             NodeX += m_Offset.X;
             NodeY *= m_Scale;
             NodeY += m_Offset.Y;
-
+            
             var withBlock = PanelBase.AutoScrollPosition;
             // Debug.WriteLine("===============")
 
@@ -1933,7 +1933,7 @@ namespace GenieClient.Mapper
             if (iScrollY == 0)
                 iScrollY = -withBlock.Y;
             PanelBase.AutoScrollPosition = new Point(iScrollX, iScrollY);
-
+            
         }
 
         private bool m_ToggleSnapToGrid = true;

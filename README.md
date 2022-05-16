@@ -29,21 +29,12 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/organizations/GenieClient/settings/profile">
-    <img src="https://avatars.githubusercontent.com/u/96760865?s=96&v=4" alt="Logo" width="80" height="80">
-  </a>
 
-<h1 align="center">Genie Client</h1>
+
+<h1 align="center">Genie 4</h1>
 
   <p align="center">
-    Genie is an alternative front-end for use with the Simutronics Corporation’s library of games, including Dragonrealms and Gemstone.
-    <br />
-	Genie3 boasts a large list of features that will help you survive and thrive in Elanthia like never before.
-	<br />
-    <a href="https://github.com/GenieClient/genie3"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/GenieClient/genie3/issues">Report Bug or Request Feature</a>
+    Genie is an alternative front-end for use with the Simutronics Corporation’s game DragonRealms.
   </p>
 </div>
 
@@ -76,18 +67,6 @@
 </details>
 
 
-
-<!-- ABOUT THE PROJECT -->
-## About The Project
-
-
-![Genie Client!](https://i.postimg.cc/0jBm69Ww/Game-Startup.png "Genie Client")
-
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
-
 ### Built With
 
 * [C#](https://docs.microsoft.com/en-us/dotnet/csharp/)
@@ -100,46 +79,15 @@
 
 <!-- GETTING STARTED -->
 ## Getting Started
+1. Download the Latest Release at
+	[https://github.com/GenieClient/Genie4/releases/latest] 	
 
+2. Upgrade and First Time Installation Instructions can be found at
+ 	[https://github.com/GenieClient/Genie4/wiki]
 
-### Prerequisites
-
-
-Genie Client utilizes Microsoft .NET Framework and may require you to install.  
-Most newer model computers will already have this installed, but if your system is a few years old or was custom built, it may be necessary to download and install this programs prior to installing our software.  These programs can be downloaded directly from the Microsoft website using the links below. 
-
-Microsoft .NET Framework 4.8 Runtime [https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48]
-
-### Installation
-
-1. Download the installer from here:
-	***todo-CreateNewBuild***
-	
-
-2. Get the latest Active Testing version of the Client from here:
-	[https://github.com/GenieClient/genie3/raw/main/bin/Release/Genie.exe](https://github.com/GenieClient/genie3/raw/main/bin/Release/Genie.exe)
-
-3. Copy the client into your install Location from Step 2 above. 
-	"Default install Directory"
-   ```sh
-   C:\Program Files (x86)\Genie Client 3
-   ```
-4. Get Maps Updates from the Team at
+3. Get Maps Updates from the Team at
 	[https://github.com/GenieClient/Maps]
 
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
-
-<!-- Feature EXAMPLES -->
-## Features
-
-### AutoMapper
-Never get lost again!  Auto Mapper lets you create, edit, and share maps of the world.  With one click, you can breeze from place to place, and see the worlds of Elanthia in a whole new way.
-A Helpful Video can be found here: [https://player.vimeo.com/video/44971762]
-
-_For more discussion, join the discord group [DiscordGroup](https://discord.gg/MtmzE2w)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -147,11 +95,15 @@ _For more discussion, join the discord group [DiscordGroup](https://discord.gg/M
 <!-- ROADMAP -->
 ## Roadmap
 
-- [https://github.com/GenieClient/genie3/issues/15] Explore Cross Platform Options
-- [https://github.com/GenieClient/genie3/issues/9] Bugfix - Game AutoScroll
-- [https://github.com/GenieClient/genie3/issues/5] Bugfix - Automapper Display
+- [x] .NET 6 Upgrade
+- [ ] Refactor Core Logic away from GUI
+- [ ] Convert GUI to Cross-Platform
+- [ ] Upgrade Plugin Interface
+- [ ] Get Latest Version (OneButton) <AInstallLogo>
+    <img src="https://cdn.advancedinstaller.com/svg/pressinfo/AiLogoColor.svg" width="70" height="40"></AInstallLogo>
 
-See the [open issues](https://github.com/GenieClient/genie3/issues) for a full list of proposed features (and known issues).
+
+See the [open issues](https://github.com/GenieClient/Genie4/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -188,7 +140,7 @@ Distributed under the GPL 3.0 License. See `LICENSE` for more information.
 ## Contact
 
 
-Project Link: [https://github.com/GenieClient/genie3](https://github.com/GenieClient/genie3)
+Project Link: [https://github.com/GenieClient/Genie4](https://github.com/GenieClient/Genie4)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -206,14 +158,17 @@ Project Link: [https://github.com/GenieClient/genie3](https://github.com/GenieCl
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/GenieClient/genie3.svg?style=for-the-badge
-[contributors-url]: https://github.com/GenieClient/genie3/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/GenieClient/genie3.svg?style=for-the-badge
-[forks-url]: https://github.com/GenieClient/genie3/network/members
-[stars-shield]: https://img.shields.io/github/stars/GenieClient/genie3.svg?style=for-the-badge
-[stars-url]: https://github.com/GenieClient/genie3/stargazers
-[issues-shield]: https://img.shields.io/github/issues/GenieClient/genie3.svg?style=for-the-badge
-[issues-url]: https://github.com/GenieClient/genie3/issues
-[license-shield]: https://img.shields.io/github/license/GenieClient/genie3.svg?style=for-the-badge
-[license-url]: https://github.com/GenieClient/genie3/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/GenieClient/Genie4.svg?style=for-the-badge
+[contributors-url]: https://github.com/GenieClient/Genie4/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/GenieClient/Genie4.svg?style=for-the-badge
+[forks-url]: https://github.com/GenieClient/Genie4/network/members
+[stars-shield]: https://img.shields.io/github/stars/GenieClient/Genie4.svg?style=for-the-badge
+[stars-url]: https://github.com/GenieClient/Genie4/stargazers
+[issues-shield]: https://img.shields.io/github/issues/GenieClient/Genie4.svg?style=for-the-badge
+[issues-url]: https://github.com/GenieClient/Genie4/issues
+[license-shield]: https://img.shields.io/github/license/GenieClient/Genie4.svg?style=for-the-badge
+[license-url]: https://github.com/GenieClient/Genie4/blob/master/LICENSE.txt
 [product-screenshot]: images/screenshot.png
+
+
+

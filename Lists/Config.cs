@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using Microsoft.VisualBasic;
@@ -40,20 +41,29 @@ namespace GenieClient.Genie
         public string sUserActivityCommand = "quit";
         public double dRTOffset = 0;
         public string sScriptDir = "Scripts";
+        public string sPluginDir = "Plugins";
+        public string sMapDir = "Maps";
         public string sConfigDir = "Config";
         public string sConfigDirProfile = "Config";
         public bool bShowLinks = false;
         public string sLogDir = "Logs";
-        // Public sConnectString As String = "/FE:GENIE /VERSION:GENIE3 /XML"
-        public string sConnectString = "FE:STORMFRONT /VERSION:1.0.1.26 /P:WIN_XP /XML";
+
+        public bool PromptBreak { get; set; } = true;
+        public bool PromptForce { get; set; } = false;
+        public bool Condensed { get; set; } = false;
+        public bool CheckForUpdates { get; set; } = true;
+        public bool AutoUpdate { get; set; } = false;
+
+        public string sConnectString = "FE:GENIE /VERSION:" + My.MyProject.Application.Info.Version.ToString() + " /P:WIN_XP /XML";
         public int[] iPickerColors = new int[17];
         public string RubyPath { get; set; } = @"C:\ruby4lich\bin\ruby.exe";
         public string CmdPath { get; set; } = @"C:\Windows\System32\cmd.exe";
-        public string LichPath { get; set; } = @"C:\ruby4lich\lich.rbw";
+        public string LichPath { get; set; } = @"c:\ruby4lich\lich\lich.rbw";
         public string LichArguments { get; set; } = @"--genie --dragonrealms";
         public string LichServer { get; set; } = "localhost";
         public int LichPort { get; set; } = 11024;
         public int LichStartPause { get; set; } = 5;
+        public string ConnectScript { get; set; } = string.Empty;
 
         public string ScriptDir
         {
@@ -67,7 +77,7 @@ namespace GenieClient.Genie
                 else
                 {
                     sLocation = LocalDirectory.Path;
-                    if (sScriptDir.StartsWith(@"\"))
+                    if (sScriptDir.StartsWith(@"\") || sLocation.EndsWith(@"\"))
                     {
                         sLocation += sScriptDir;
                     }
@@ -88,6 +98,78 @@ namespace GenieClient.Genie
                 }
 
                 sScriptDir = value;
+            }
+        }
+
+        public string MapDir
+        {
+            get
+            {
+                string sLocation = string.Empty;
+                if (sMapDir.Contains(":"))
+                {
+                    sLocation = sMapDir;
+                }
+                else
+                {
+                    sLocation = LocalDirectory.Path;
+                    if (sMapDir.StartsWith(@"\") || sLocation.EndsWith(@"\"))
+                    {
+                        sLocation += sMapDir;
+                    }
+                    else
+                    {
+                        sLocation += @"\" + sMapDir;
+                    }
+                }
+
+                return sLocation;
+            }
+
+            set
+            {
+                if (value.EndsWith(@"\"))
+                {
+                    value = value.Substring(0, value.Length - 1);
+                }
+
+                sMapDir = value;
+            }
+        }
+
+        public string PluginDir
+        {
+            get
+            {
+                string sLocation = string.Empty;
+                if (sPluginDir.Contains(":"))
+                {
+                    sLocation = sPluginDir;
+                }
+                else
+                {
+                    sLocation = LocalDirectory.Path;
+                    if (sPluginDir.StartsWith(@"\") || sLocation.EndsWith(@"\"))
+                    {
+                        sLocation += sPluginDir;
+                    }
+                    else
+                    {
+                        sLocation += @"\" + sPluginDir;
+                    }
+                }
+
+                return sLocation;
+            }
+
+            set
+            {
+                if (value.EndsWith(@"\"))
+                {
+                    value = value.Substring(0, value.Length - 1);
+                }
+
+                sPluginDir = value;
             }
         }
 
@@ -136,7 +218,7 @@ namespace GenieClient.Genie
                 else
                 {
                     sLocation = LocalDirectory.Path;
-                    if (sConfigDir.StartsWith(@"\"))
+                    if (sConfigDir.StartsWith(@"\") || sLocation.EndsWith(@"\"))
                     {
                         sLocation += sConfigDir;
                     }
@@ -172,7 +254,7 @@ namespace GenieClient.Genie
                 else
                 {
                     sLocation = LocalDirectory.Path;
-                    if (sConfigDirProfile.StartsWith(@"\"))
+                    if (sConfigDirProfile.StartsWith(@"\") || sLocation.EndsWith(@"\"))
                     {
                         sLocation += sConfigDirProfile;
                     }
@@ -215,7 +297,9 @@ namespace GenieClient.Genie
             KeepInput,
             Muted,
             AutoMapper,
-            LogDir
+            LogDir,
+            CheckForUpdates,
+            AutoUpdate
         }
 
         public Font MonoFont
@@ -255,7 +339,7 @@ namespace GenieClient.Genie
                     sFileName = ConfigDir + @"\" + sFileName;
                 }
 
-                if (File.Exists(sFileName) == true)
+                if (File.Exists(sFileName))
                 {
                     Utility.DeleteFile(sFileName);
                 }
@@ -271,12 +355,17 @@ namespace GenieClient.Genie
                 oStreamWriter.WriteLine("#config {autolog} {" + bAutoLog + "}");
                 oStreamWriter.WriteLine("#config {editor} {" + sEditor + "}");
                 oStreamWriter.WriteLine("#config {prompt} {" + sPrompt + "}");
+                oStreamWriter.WriteLine("#config {promptbreak} {" + PromptBreak + "}");
+                oStreamWriter.WriteLine("#config {promptforce} {" + PromptForce + "}");
+                oStreamWriter.WriteLine("#config {condensed} {" + Condensed + "}");
                 oStreamWriter.WriteLine("#config {monstercountignorelist} {" + sIgnoreMonsterList + "}");
                 oStreamWriter.WriteLine("#config {scripttimeout} {" + iScriptTimeout + "}");
                 oStreamWriter.WriteLine("#config {maxgosubdepth} {" + iMaxGoSubDepth + "}");
                 oStreamWriter.WriteLine("#config {ignorescriptwarnings} {" + bIgnoreScriptWarnings + "}");
                 oStreamWriter.WriteLine("#config {roundtimeoffset} {" + dRTOffset + "}");
                 oStreamWriter.WriteLine("#config {scriptdir} {" + sScriptDir + "}");
+                oStreamWriter.WriteLine("#config {mapdir} {" + sMapDir + "}");
+                oStreamWriter.WriteLine("#config {plugindir} {" + sPluginDir + "}");
                 oStreamWriter.WriteLine("#config {configdir} {" + sConfigDir + "}");
                 oStreamWriter.WriteLine("#config {logdir} {" + sLogDir + "}");
                 oStreamWriter.WriteLine("#config {reconnect} {" + bReconnect + "}");
@@ -298,6 +387,9 @@ namespace GenieClient.Genie
                 oStreamWriter.WriteLine($"#config {{lichserver}} {{{LichServer}}}");
                 oStreamWriter.WriteLine($"#config {{lichport}} {{{LichPort}}}");
                 oStreamWriter.WriteLine($"#config {{lichstartpause}} {{{LichStartPause}}}");
+                oStreamWriter.WriteLine($"#config {{connectscript}} {{{ConnectScript}}}");
+                oStreamWriter.WriteLine($"#config {{autoupdate}} {{{AutoUpdate}}}");
+                oStreamWriter.WriteLine($"#config {{checkforupdates}} {{{CheckForUpdates}}}");
                 oStreamWriter.Close();
                 return true;
             }
@@ -329,9 +421,9 @@ namespace GenieClient.Genie
                         {
                             SetSetting(oArgs[1].ToString(), oArgs[2].ToString(), false);
                         }
-                        catch (Exception ex)
+                        catch
                         {
-                            throw new Exception("Failed to load setting: " + strLine + Constants.vbNewLine + ex.Message + Constants.vbNewLine);
+                           //Settings! We got bad settings here! See? No one cares.
                         }
                     }
 
@@ -347,574 +439,684 @@ namespace GenieClient.Genie
             }
         }
 
-        public void SetSetting(string sKey, string sValue = "", bool bShowException = true)
+        public List<string> SetSetting(string sKey, string sValue = "", bool bShowException = true)
         {
-            if (sKey.Length > 0)
-            {
-                var switchExpr = sKey.ToLower();
-                switch (switchExpr)
+            try 
+            { 
+                List<string> messages = new List<string>();
+                if (sKey.Length > 0)
                 {
-                    case "scriptchar":
-                        {
-                            if (sValue.Length > 0)
+                    var switchExpr = sKey.ToLower();
+                    switch (switchExpr)
+                    {
+                        case "scriptchar":
                             {
-                                ScriptChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                if (sValue.Length > 0)
+                                {
+                                    ScriptChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "triggeroninput":
-                        {
-                            var switchExpr1 = sValue.ToLower();
-                            switch (switchExpr1)
+                        case "triggeroninput":
                             {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bTriggerOnInput = true;
-                                        break;
-                                    }
+                                var switchExpr1 = sValue.ToLower();
+                                switch (switchExpr1)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bTriggerOnInput = true;
+                                            break;
+                                        }
 
-                                default:
-                                    {
-                                        bTriggerOnInput = false;
-                                        break;
-                                    }
+                                    default:
+                                        {
+                                            bTriggerOnInput = false;
+                                            break;
+                                        }
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "separatorchar":
-                        {
-                            if (sValue.Length > 0)
+                        case "separatorchar":
                             {
-                                cSeparatorChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                if (sValue.Length > 0)
+                                {
+                                    cSeparatorChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "commandchar":
-                        {
-                            if (sValue.Length > 0)
+                        case "commandchar":
                             {
-                                cCommandChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                if (sValue.Length > 0)
+                                {
+                                    cCommandChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "mycommandchar":
-                        {
-                            if (sValue.Length > 0)
+                        case "mycommandchar":
                             {
-                                cMyCommandChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                if (sValue.Length > 0)
+                                {
+                                    cMyCommandChar = Conversions.ToChar(sValue.ToCharArray().GetValue(0));
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "maxrowbuffer":
-                        {
-                            if (sValue.Length > 0)
+                        case "maxrowbuffer":
                             {
-                                iBufferLineSize = Utility.StringToInteger(sValue);
+                                if (sValue.Length > 0)
+                                {
+                                    iBufferLineSize = Utility.StringToInteger(sValue);
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "spelltimer":
-                        {
-                            var switchExpr2 = sValue.ToLower();
-                            switch (switchExpr2)
+                        case "spelltimer":
                             {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bShowSpellTimer = true;
-                                        break;
-                                    }
+                                var switchExpr2 = sValue.ToLower();
+                                switch (switchExpr2)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bShowSpellTimer = true;
+                                            break;
+                                        }
 
-                                default:
-                                    {
-                                        bShowSpellTimer = false;
-                                        break;
-                                    }
+                                    default:
+                                        {
+                                            bShowSpellTimer = false;
+                                            break;
+                                        }
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "autolog":
-                        {
-                            var switchExpr3 = sValue.ToLower();
-                            switch (switchExpr3)
+                        case "autolog":
                             {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bAutoLog = true;
-                                        break;
-                                    }
+                                var switchExpr3 = sValue.ToLower();
+                                switch (switchExpr3)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bAutoLog = true;
+                                            break;
+                                        }
 
-                                default:
-                                    {
-                                        bAutoLog = false;
-                                        break;
-                                    }
-                            }
-                            
-                            ConfigChanged?.Invoke(ConfigFieldUpdated.Autolog);
-                            break;
-                        }
+                                    default:
+                                        {
+                                            bAutoLog = false;
+                                            break;
+                                        }
+                                }
 
-                    case "editor":
-                        {
-                            if (File.Exists(sValue) == true)
-                            {
-                                sEditor = sValue;
-                            }
-                            else if (bShowException)
-                            {
-                                throw new Exception("Directory does not exist: " + sValue);
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.Autolog);
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "scripttimeout":
-                        {
-                            if (sValue.Length > 0)
+                        case "editor":
                             {
-                                iScriptTimeout = Conversions.ToInteger(Utility.StringToDouble(sValue));
+                                if (File.Exists(sValue) == true)
+                                {
+                                    sEditor = sValue;
+                                }
+                                else if (bShowException)
+                                {
+                                    throw new Exception("Directory does not exist: " + sValue);
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "servertimeout":
-                        {
-                            if (sValue.Length > 0)
+                        case "scripttimeout":
                             {
-                                iServerActivityTimeout = Conversions.ToInteger(Utility.StringToDouble(sValue));
+                                if (sValue.Length > 0)
+                                {
+                                    iScriptTimeout = Conversions.ToInteger(Utility.StringToDouble(sValue));
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "usertimeout":
-                        {
-                            if (sValue.Length > 0)
+                        case "servertimeout":
                             {
-                                iUserActivityTimeout = Conversions.ToInteger(Utility.StringToDouble(sValue));
+                                if (sValue.Length > 0)
+                                {
+                                    iServerActivityTimeout = Conversions.ToInteger(Utility.StringToDouble(sValue));
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "servertimeoutcommand":
-                        {
-                            if (sValue.Length > 0)
+                        case "usertimeout":
                             {
-                                sServerActivityCommand = sValue;
+                                if (sValue.Length > 0)
+                                {
+                                    iUserActivityTimeout = Conversions.ToInteger(Utility.StringToDouble(sValue));
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "usertimeoutcommand":
-                        {
-                            if (sValue.Length > 0)
+                        case "servertimeoutcommand":
                             {
-                                sUserActivityCommand = sValue;
+                                if (sValue.Length > 0)
+                                {
+                                    sServerActivityCommand = sValue;
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "prompt":
-                        {
-                            var switchExpr4 = sValue.ToLower();
-                            switch (switchExpr4)
+                        case "usertimeoutcommand":
                             {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        sPrompt = "> ";
-                                        break;
-                                    }
+                                if (sValue.Length > 0)
+                                {
+                                    sUserActivityCommand = sValue;
+                                }
 
-                                case "off":
-                                case "false":
-                                case "0":
-                                    {
-                                        sPrompt = string.Empty;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        sPrompt = sValue;
-                                        break;
-                                    }
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "monstercountignorelist":
-                        {
-                            if (sValue.Length > 0)
+                        case "prompt":
                             {
-                                sIgnoreMonsterList = sValue;
+                                var switchExpr4 = sValue.ToLower();
+                                switch (switchExpr4)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            sPrompt = "> ";
+                                            break;
+                                        }
+
+                                    case "off":
+                                    case "false":
+                                    case "0":
+                                        {
+                                            sPrompt = string.Empty;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            sPrompt = sValue;
+                                            break;
+                                        }
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "maxgosubdepth":
-                        {
-                            if (sValue.Length > 0)
+                        case "promptbreak":
                             {
-                                iMaxGoSubDepth = Conversions.ToInteger(sValue);
+                                switch (sValue.ToLower())
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            PromptBreak = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            PromptBreak = false;
+                                            break;
+                                        }
+                                }
+                                break;
+                            }
+                        case "promptforce":
+                            {
+                                switch (sValue.ToLower())
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            PromptForce = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            PromptForce = false;
+                                            break;
+                                        }
+                                }
+                                break;
+                            }
+                        case "condensed":
+                            {
+                                switch (sValue.ToLower())
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            Condensed = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            Condensed = false;
+                                            break;
+                                        }
+                                }
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "roundtimeoffset":
-                        {
-                            if (sValue.Length > 0)
+                        case "monstercountignorelist":
                             {
-                                dRTOffset = Utility.StringToDouble(sValue);
+                                if (sValue.Length > 0)
+                                {
+                                    sIgnoreMonsterList = sValue;
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "scriptdir":
-                        {
-                            if (Directory.Exists(sValue) == true)
+                        case "maxgosubdepth":
                             {
+                                if (sValue.Length > 0)
+                                {
+                                    iMaxGoSubDepth = Conversions.ToInteger(sValue);
+                                }
+
+                                break;
+                            }
+
+                        case "roundtimeoffset":
+                            {
+                                if (sValue.Length > 0)
+                                {
+                                    dRTOffset = Utility.StringToDouble(sValue);
+                                }
+
+                                break;
+                            }
+
+                        case "scriptdir":
+                            {
+
+                                messages.Add(LocalDirectory.ValidateDirectory(sValue));
                                 ScriptDir = sValue;
-                            }
-                            else if (Directory.Exists(LocalDirectory.Path + @"\" + sValue) == true)
-                            {
-                                ScriptDir = sValue;
-                            }
-                            else if (bShowException == true)
-                            {
-                                throw new Exception("Directory does not exist: " + sValue);
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "configdir":
-                        {
-                            if (Directory.Exists(sValue) == true)
+                        case "mapdir":
                             {
+                                messages.Add(LocalDirectory.ValidateDirectory(sValue));
+                                MapDir = sValue;
+                                break;
+                            }
+
+                        case "plugindir":
+                            {
+                                messages.Add(LocalDirectory.ValidateDirectory(sValue));
+                                PluginDir = sValue;
+                                break;
+                            }
+
+                        case "configdir":
+                            {
+                                messages.Add(LocalDirectory.ValidateDirectory(sValue));
                                 ConfigDir = sValue;
-                            }
-                            else if (Directory.Exists(LocalDirectory.Path + @"\" + sValue) == true)
-                            {
-                                ConfigDir = sValue;
-                            }
-                            else if (bShowException == true)
-                            {
-                                throw new Exception("Directory does not exist: " + sValue);
+                                break;
                             }
 
-                            break;
-                        }
-
-                    case "ignorescriptwarnings":
-                        {
-                            var switchExpr5 = sValue.ToLower();
-                            switch (switchExpr5)
+                        case "logdir":
                             {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bIgnoreScriptWarnings = true;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bIgnoreScriptWarnings = false;
-                                        break;
-                                    }
-                            }
-
-                            break;
-                        }
-
-                    case "reconnect":
-                        {
-                            var switchExpr6 = sValue.ToLower();
-                            switch (switchExpr6)
-                            {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bReconnect = true;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bReconnect = false;
-                                        break;
-                                    }
-                            }
-
-                            ConfigChanged?.Invoke(ConfigFieldUpdated.Reconnect);
-                            break;
-                        }
-
-                    case "ignoreclosealert":
-                        {
-                            var switchExpr7 = sValue.ToLower();
-                            switch (switchExpr7)
-                            {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bIgnoreCloseAlert = true;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bIgnoreCloseAlert = false;
-                                        break;
-                                    }
-                            }
-
-                            break;
-                        }
-
-                    case "muted":
-                        {
-                            var switchExpr8 = sValue.ToLower();
-                            switch (switchExpr8)
-                            {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bPlaySounds = false;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bPlaySounds = true;
-                                        break;
-                                    }
-                            }
-
-                            ConfigChanged?.Invoke(ConfigFieldUpdated.Muted);
-                            break;
-                        }
-
-                    case "keepinputtext":
-                        {
-                            var switchExpr9 = sValue.ToLower();
-                            switch (switchExpr9)
-                            {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bKeepInput = true;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bKeepInput = false;
-                                        break;
-                                    }
-                            }
-
-                            ConfigChanged?.Invoke(ConfigFieldUpdated.KeepInput);
-                            break;
-                        }
-
-                    case "abortdupescript":
-                        {
-                            var switchExpr10 = sValue.ToLower();
-                            switch (switchExpr10)
-                            {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bAbortDupeScript = true;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bAbortDupeScript = false;
-                                        break;
-                                    }
-                            }
-
-                            break;
-                        }
-
-                    case "parsegameonly":
-                        {
-                            var switchExpr11 = sValue.ToLower();
-                            switch (switchExpr11)
-                            {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bParseGameOnly = true;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bParseGameOnly = false;
-                                        break;
-                                    }
-                            }
-
-                            break;
-                        }
-
-                    case "connectstring":
-                        {
-                            if (sValue.Length > 0)
-                            {
-                                // sConnectString = sValue
-                            }
-
-                            break;
-                        }
-                    case "cmdpath":
-                        {
-                            if (!string.IsNullOrEmpty(sValue)) CmdPath = @$"{sValue}";
-                            break;
-                        }
-
-                    case "rubypath":
-                        {
-                            if(!string.IsNullOrEmpty(sValue)) RubyPath = @$"{sValue}";
-                            break;
-                        }
-
-                    case "lichpath":
-                        {
-                            if (!string.IsNullOrEmpty(sValue)) LichPath = @$"{sValue}";
-                            break;
-                        }
-
-                    case "licharguments":
-                        {
-                            if (!string.IsNullOrEmpty(sValue)) LichArguments = @$"{sValue}";
-                            break;
-                        }
-
-                    case "lichstartpause":
-                        {
-                            if (!string.IsNullOrEmpty(sValue)) LichStartPause = Convert.ToInt32(sValue);
-                            break;
-                        }
-
-                    case "lichserver":
-                        {
-                            if (!string.IsNullOrEmpty(sValue)) LichServer = @$"{sValue}";
-                            break;
-                        }
-
-                    case "lichport":
-                        {
-                            if (!string.IsNullOrEmpty(sValue)) LichPort = Convert.ToInt32(sValue);
-                            break;
-                        }
-                    case "automapper":
-                        {
-                            var switchExpr12 = sValue.ToLower();
-                            switch (switchExpr12)
-                            {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bAutoMapper = true;
-                                        break;
-                                    }
-
-                                default:
-                                    {
-                                        bAutoMapper = false;
-                                        break;
-                                    }
-                            }
-
-                            ConfigChanged?.Invoke(ConfigFieldUpdated.AutoMapper);
-                            break;
-                        }
-
-                    case "logdir":
-                        {
-                            if (Directory.Exists(sValue) == true)
-                            {
+                                messages.Add(LocalDirectory.ValidateDirectory(sValue));
                                 sLogDir = sValue;
+
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.LogDir);
+                                break;
                             }
-                            else if (Directory.Exists(LocalDirectory.Path + @"\" + sValue) == true)
+
+                        case "ignorescriptwarnings":
                             {
-                                sLogDir = sValue;
+                                var switchExpr5 = sValue.ToLower();
+                                switch (switchExpr5)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bIgnoreScriptWarnings = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bIgnoreScriptWarnings = false;
+                                            break;
+                                        }
+                                }
+
+                                break;
                             }
-                            else if (bShowException == true)
+
+                        case "reconnect":
                             {
-                                throw new Exception("Directory does not exist: " + sValue);
+                                var switchExpr6 = sValue.ToLower();
+                                switch (switchExpr6)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bReconnect = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bReconnect = false;
+                                            break;
+                                        }
+                                }
+
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.Reconnect);
+                                break;
                             }
 
-                            ConfigChanged?.Invoke(ConfigFieldUpdated.LogDir);
-                            break;
-                        }
-
-                    case "showlinks":
-                        {
-                            var switchExpr13 = sValue.ToLower();
-                            switch (switchExpr13)
+                        case "ignoreclosealert":
                             {
-                                case "on":
-                                case "true":
-                                case "1":
-                                    {
-                                        bShowLinks = true;
-                                        break;
-                                    }
+                                var switchExpr7 = sValue.ToLower();
+                                switch (switchExpr7)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bIgnoreCloseAlert = true;
+                                            break;
+                                        }
 
-                                default:
-                                    {
-                                        bShowLinks = false;
-                                        break;
-                                    }
+                                    default:
+                                        {
+                                            bIgnoreCloseAlert = false;
+                                            break;
+                                        }
+                                }
+
+                                break;
                             }
 
-                            break;
-                        }
+                        case "muted":
+                            {
+                                var switchExpr8 = sValue.ToLower();
+                                switch (switchExpr8)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bPlaySounds = false;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bPlaySounds = true;
+                                            break;
+                                        }
+                                }
+
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.Muted);
+                                break;
+                            }
+
+                        case "keepinputtext":
+                            {
+                                var switchExpr9 = sValue.ToLower();
+                                switch (switchExpr9)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bKeepInput = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bKeepInput = false;
+                                            break;
+                                        }
+                                }
+
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.KeepInput);
+                                break;
+                            }
+
+                        case "abortdupescript":
+                            {
+                                var switchExpr10 = sValue.ToLower();
+                                switch (switchExpr10)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bAbortDupeScript = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bAbortDupeScript = false;
+                                            break;
+                                        }
+                                }
+
+                                break;
+                            }
+
+                        case "parsegameonly":
+                            {
+                                var switchExpr11 = sValue.ToLower();
+                                switch (switchExpr11)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bParseGameOnly = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bParseGameOnly = false;
+                                            break;
+                                        }
+                                }
+
+                                break;
+                            }
+
+                        case "autoupdate":
+                            {
+                                var expression = sValue.ToLower();
+                                switch (expression)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            AutoUpdate = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            AutoUpdate = false;
+                                            break;
+                                        }
+                                }
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.AutoUpdate);
+                                break;
+                            }
+
+                        case "checkforupdates":
+                            {
+                                var expression = sValue.ToLower();
+                                switch (expression)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            CheckForUpdates = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            CheckForUpdates = false;
+                                            break;
+                                        }
+                                }
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.CheckForUpdates);
+                                break;
+                            }
+
+                        case "connectstring":
+                            {
+                                if (sValue.Length > 0)
+                                {
+                                    // sConnectString = sValue
+                                }
+
+                                break;
+                            }
+
+                        case "cmdpath":
+                            {
+                                if (!string.IsNullOrEmpty(sValue)) CmdPath = @$"{sValue}";
+                                break;
+                            }
+
+                        case "rubypath":
+                            {
+                                if (!string.IsNullOrEmpty(sValue)) RubyPath = @$"{sValue}";
+                                break;
+                            }
+
+                        case "lichpath":
+                            {
+                                if (!string.IsNullOrEmpty(sValue)) LichPath = @$"{sValue}";
+                                break;
+                            }
+
+                        case "licharguments":
+                            {
+                                if (!string.IsNullOrEmpty(sValue)) LichArguments = @$"{sValue}";
+                                break;
+                            }
+
+                        case "lichstartpause":
+                            {
+                                if (!string.IsNullOrEmpty(sValue)) LichStartPause = Convert.ToInt32(sValue);
+                                break;
+                            }
+
+                        case "lichserver":
+                            {
+                                if (!string.IsNullOrEmpty(sValue)) LichServer = @$"{sValue}";
+                                break;
+                            }
+
+                        case "lichport":
+                            {
+                                if (!string.IsNullOrEmpty(sValue)) LichPort = Convert.ToInt32(sValue);
+                                break;
+                            }
+
+                        case "connectscript":
+                            {
+                                ConnectScript = sValue.ToString();
+                                break;
+                            }
+                        case "automapper":
+                            {
+                                var switchExpr12 = sValue.ToLower();
+                                switch (switchExpr12)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bAutoMapper = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bAutoMapper = false;
+                                            break;
+                                        }
+                                }
+
+                                ConfigChanged?.Invoke(ConfigFieldUpdated.AutoMapper);
+                                break;
+                            }
+
+                        case "showlinks":
+                            {
+                                var switchExpr13 = sValue.ToLower();
+                                switch (switchExpr13)
+                                {
+                                    case "on":
+                                    case "true":
+                                    case "1":
+                                        {
+                                            bShowLinks = true;
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            bShowLinks = false;
+                                            break;
+                                        }
+                                }
+
+                                break;
+                            }
+                        default:
+                            throw new Exception($"Config {switchExpr} was not recognized.");
+                    }
+                    messages.Add($"Set {switchExpr}: {sValue}");
+                    messages.Add("Don't forget to #save config");
                 }
+                return messages;
+            }
+            catch(Exception up)
+            {
+                throw up;
             }
         }
     }

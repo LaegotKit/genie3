@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -15,7 +16,7 @@ namespace GenieClient.Genie
     {
         public event EventReconnectEventHandler EventReconnect;
 
-        public delegate void EventReconnectEventHandler(bool isLich);
+        public delegate void EventReconnectEventHandler();
 
         public event EventConnectEventHandler EventConnect;
 
@@ -24,6 +25,10 @@ namespace GenieClient.Genie
         public event EventDisconnectEventHandler EventDisconnect;
 
         public delegate void EventDisconnectEventHandler();
+
+        public event EventExitEventHandler EventExit;
+
+        public delegate void EventExitEventHandler();
 
         public event EventEchoTextEventHandler EventEchoText;
 
@@ -61,7 +66,7 @@ namespace GenieClient.Genie
 
         public delegate void EventStatusBarEventHandler(string sText, int iIndex);
 
-        // public event EventCopyDataEventHandler EventCopyData;
+        public event EventCopyDataEventHandler EventCopyData;
 
         public delegate void EventCopyDataEventHandler(string sDestination, string sData);
 
@@ -135,7 +140,11 @@ namespace GenieClient.Genie
 
         public event EventAddWindowEventHandler EventAddWindow;
 
-        public delegate void EventAddWindowEventHandler(string sWindow);
+        public delegate void EventAddWindowEventHandler(string sWindow, int sWidth, int sHeight, int? sTop, int? sLeft);
+
+        public event EventPositionWindowEventHandler EventPositionWindow;
+
+        public delegate void EventPositionWindowEventHandler(string sWindow, int? sWidth, int? sHeight, int? sTop, int? sLeft);
 
         public event EventRemoveWindowEventHandler EventRemoveWindow;
 
@@ -177,6 +186,9 @@ namespace GenieClient.Genie
 
         public delegate void DisablePluginEventHandler(string filename);
 
+        public event LaunchBrowserEventHandler LaunchBrowser;
+        public delegate void LaunchBrowserEventHandler(string url);
+
         public event ReloadPluginsEventHandler ReloadPlugins;
 
         public delegate void ReloadPluginsEventHandler();
@@ -198,7 +210,7 @@ namespace GenieClient.Genie
         {
             /* TODO ERROR: Skipped IfDirectiveTrivia *//* TODO ERROR: Skipped DisabledTextTrivia *//* TODO ERROR: Skipped EndIfDirectiveTrivia */
             string sResult = string.Empty;
-            if (sText.ToLower().StartsWith("bug ") | sText.ToLower().StartsWith("sing "))
+            if (sText.ToLower().StartsWith("bug ") | sText.ToLower().StartsWith("sing ") | sText.ToLower().StartsWith(";"))
             {
                 if (bSendToGame == true)
                 {
@@ -294,20 +306,17 @@ namespace GenieClient.Genie
 
                                             if (!Information.IsNothing(oColor) && oColor != Color.Empty)
                                             {
-                                                string argsText1 = oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1, false) + Constants.vbNewLine);
+                                                string argsText1 = oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1, false) + System.Environment.NewLine);
                                                 EchoColorText(argsText1, oColor, oBgcolor, sOutputWindow);
                                             }
                                             else
                                             {
-                                                EchoText(oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1, false) + Constants.vbNewLine), sOutputWindow);
+                                                EchoText(oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1, false) + System.Environment.NewLine), sOutputWindow);
                                             }
 
                                             sResult = "";
                                             break;
                                         }
-                                    // Case "jint"
-                                    // Dim jint As New JintEngine()
-                                    // EchoText(jint.Run("var blah = 1;return blah + 10;").ToString())
                                     case "link":
                                         {
                                             string sWindow = string.Empty;
@@ -358,7 +367,7 @@ namespace GenieClient.Genie
                                                     string sTargetChar = Conversions.ToString(oGlobals.VariableList["charactername"]);
                                                     string sGameName = Conversions.ToString(oGlobals.VariableList["game"]);
                                                     sLogText = oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1, false));
-                                                    oGlobals.Log.LogText(sLogText + Constants.vbNewLine, sTargetChar, sGameName);
+                                                    oGlobals.Log.LogText(sLogText + System.Environment.NewLine, sTargetChar, sGameName);
                                                 }
                                             }
 
@@ -377,10 +386,10 @@ namespace GenieClient.Genie
                                         {
                                             EchoText("Starting Lich Server\n");
                                             string lichLaunch = $"/C {oGlobals.Config.RubyPath} {oGlobals.Config.LichPath} {oGlobals.Config.LichArguments}";
-                                            
+
                                             Utility.ExecuteProcess(oGlobals.Config.CmdPath, lichLaunch, false);
                                             int count = 0;
-                                            while (count < oGlobals.Config.LichStartPause) 
+                                            while (count < oGlobals.Config.LichStartPause)
                                             {
                                                 Thread.Sleep(1000);
                                                 count++;
@@ -403,12 +412,24 @@ namespace GenieClient.Genie
                                             EchoText($"Lich Port:\t\t {oGlobals.Config.LichPort}\n\n");
                                             break;
                                         }
+
                                     case "disconnect":
                                         {
                                             EventDisconnect?.Invoke();
                                             break;
                                         }
-
+                                    case "exit":
+                                        {
+                                            EventExit?.Invoke();
+                                            break;
+                                        }
+                                    case "browser":
+                                        {
+                                            string url = oGlobals.ParseGlobalVars(oArgs[1].ToString());
+                                            if (!url.StartsWith("http://") && !url.StartsWith("https://")) url = "http://" + url;
+                                            LaunchBrowser?.Invoke(url);
+                                            break;
+                                        }
                                     case "clear":
                                         {
                                             ClearWindow(oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1)));
@@ -430,7 +451,7 @@ namespace GenieClient.Genie
                                                         case "setvar":
                                                         case "setvariable":
                                                             {
-                                                                EchoText("Variables Saved" + Constants.vbNewLine);
+                                                                EchoText("Variables Saved" + System.Environment.NewLine);
                                                                 oGlobals.VariableList.Save();
                                                                 break;
                                                             }
@@ -438,7 +459,7 @@ namespace GenieClient.Genie
                                                         case "alias":
                                                         case "aliases":
                                                             {
-                                                                EchoText("Aliases Saved" + Constants.vbNewLine);
+                                                                EchoText("Aliases Saved" + System.Environment.NewLine);
                                                                 oGlobals.AliasList.Save();
                                                                 break;
                                                             }
@@ -446,7 +467,7 @@ namespace GenieClient.Genie
                                                         case "class":
                                                         case "classes":
                                                             {
-                                                                EchoText("Classes Saved" + Constants.vbNewLine);
+                                                                EchoText("Classes Saved" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.Save();
                                                                 break;
                                                             }
@@ -456,7 +477,7 @@ namespace GenieClient.Genie
                                                         case "action":
                                                         case "actions":
                                                             {
-                                                                EchoText("Triggers Saved" + Constants.vbNewLine);
+                                                                EchoText("Triggers Saved" + System.Environment.NewLine);
                                                                 oGlobals.TriggerList.Save(oGlobals.Config.ConfigDir + @"\triggers.cfg");
                                                                 break;
                                                             }
@@ -466,7 +487,7 @@ namespace GenieClient.Genie
                                                         case "setting":
                                                         case "settings":
                                                             {
-                                                                EchoText("Settings Saved" + Constants.vbNewLine);
+                                                                EchoText("Settings Saved" + System.Environment.NewLine);
                                                                 oGlobals.Config.Save(oGlobals.Config.ConfigDir + @"\settings.cfg");
                                                                 break;
                                                             }
@@ -474,7 +495,7 @@ namespace GenieClient.Genie
                                                         case "macro":
                                                         case "macros":
                                                             {
-                                                                EchoText("Macros Saved" + Constants.vbNewLine);
+                                                                EchoText("Macros Saved" + System.Environment.NewLine);
                                                                 oGlobals.MacroList.Save();
                                                                 break;
                                                             }
@@ -483,7 +504,7 @@ namespace GenieClient.Genie
                                                         case "subs":
                                                         case "substitute":
                                                             {
-                                                                EchoText("Substitutes Saved" + Constants.vbNewLine);
+                                                                EchoText("Substitutes Saved" + System.Environment.NewLine);
                                                                 oGlobals.SubstituteList.Save(oGlobals.Config.ConfigDir + @"\substitutes.cfg");
                                                                 break;
                                                             }
@@ -494,7 +515,7 @@ namespace GenieClient.Genie
                                                         case "ignore":
                                                         case "ignores":
                                                             {
-                                                                EchoText("Gags Saved" + Constants.vbNewLine);
+                                                                EchoText("Gags Saved" + System.Environment.NewLine);
                                                                 oGlobals.GagList.Save();
                                                                 break;
                                                             }
@@ -502,7 +523,7 @@ namespace GenieClient.Genie
                                                         case "highlight":
                                                         case "highlights":
                                                             {
-                                                                EchoText("Highlights Saved" + Constants.vbNewLine);
+                                                                EchoText("Highlights Saved" + System.Environment.NewLine);
                                                                 oGlobals.SaveHighlights(oGlobals.Config.ConfigDir + @"\highlights.cfg");
                                                                 break;
                                                             }
@@ -510,7 +531,7 @@ namespace GenieClient.Genie
                                                         case "name":
                                                         case "names":
                                                             {
-                                                                EchoText("Names Saved" + Constants.vbNewLine);
+                                                                EchoText("Names Saved" + System.Environment.NewLine);
                                                                 oGlobals.NameList.Save(oGlobals.Config.ConfigDir + @"\names.cfg");
                                                                 break;
                                                             }
@@ -518,14 +539,14 @@ namespace GenieClient.Genie
                                                         case "preset":
                                                         case "presets":
                                                             {
-                                                                EchoText("Presets Saved" + Constants.vbNewLine);
+                                                                EchoText("Presets Saved" + System.Environment.NewLine);
                                                                 oGlobals.PresetList.Save(oGlobals.Config.ConfigDir + @"\presets.cfg");
                                                                 break;
                                                             }
 
                                                         case "layout":
                                                             {
-                                                                EchoText("Layout Saved" + Constants.vbNewLine);
+                                                                EchoText("Layout Saved" + System.Environment.NewLine);
                                                                 var tmp = string.Empty;
                                                                 EventSaveLayout?.Invoke(tmp);
                                                                 break;
@@ -533,34 +554,34 @@ namespace GenieClient.Genie
 
                                                         case "profile":
                                                             {
-                                                                EchoText("Profile Saved" + Constants.vbNewLine);
+                                                                EchoText("Profile Saved" + System.Environment.NewLine);
                                                                 EventSaveProfile?.Invoke();
                                                                 break;
                                                             }
 
                                                         case "all":
                                                             {
-                                                                EchoText("Variables Saved" + Constants.vbNewLine);
+                                                                EchoText("Variables Saved" + System.Environment.NewLine);
                                                                 oGlobals.VariableList.Save();
-                                                                EchoText("Aliases Saved" + Constants.vbNewLine);
+                                                                EchoText("Aliases Saved" + System.Environment.NewLine);
                                                                 oGlobals.AliasList.Save();
-                                                                EchoText("Classes Saved" + Constants.vbNewLine);
+                                                                EchoText("Classes Saved" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.Save();
-                                                                EchoText("Triggers Saved" + Constants.vbNewLine);
+                                                                EchoText("Triggers Saved" + System.Environment.NewLine);
                                                                 oGlobals.TriggerList.Save(oGlobals.Config.ConfigDir + @"\triggers.cfg");
-                                                                EchoText("Settings Saved" + Constants.vbNewLine);
+                                                                EchoText("Settings Saved" + System.Environment.NewLine);
                                                                 oGlobals.Config.Save(oGlobals.Config.ConfigDir + @"\settings.cfg");
-                                                                EchoText("Macros Saved" + Constants.vbNewLine);
+                                                                EchoText("Macros Saved" + System.Environment.NewLine);
                                                                 oGlobals.MacroList.Save();
-                                                                EchoText("Substitutes Saved" + Constants.vbNewLine);
+                                                                EchoText("Substitutes Saved" + System.Environment.NewLine);
                                                                 oGlobals.SubstituteList.Save(oGlobals.Config.ConfigDir + @"\substitutes.cfg");
-                                                                EchoText("Gags Saved" + Constants.vbNewLine);
+                                                                EchoText("Gags Saved" + System.Environment.NewLine);
                                                                 oGlobals.GagList.Save();
-                                                                EchoText("Highlights Saved" + Constants.vbNewLine);
+                                                                EchoText("Highlights Saved" + System.Environment.NewLine);
                                                                 oGlobals.SaveHighlights(oGlobals.Config.ConfigDir + @"\highlights.cfg");
-                                                                EchoText("Names Saved" + Constants.vbNewLine);
+                                                                EchoText("Names Saved" + System.Environment.NewLine);
                                                                 oGlobals.NameList.Save(oGlobals.Config.ConfigDir + @"\names.cfg");
-                                                                EchoText("Presets Saved" + Constants.vbNewLine);
+                                                                EchoText("Presets Saved" + System.Environment.NewLine);
                                                                 oGlobals.PresetList.Save(oGlobals.Config.ConfigDir + @"\presets.cfg");
                                                                 break;
                                                             }
@@ -586,7 +607,7 @@ namespace GenieClient.Genie
                                                         case "setvar":
                                                         case "setvariable":
                                                             {
-                                                                EchoText("Variables Loaded" + Constants.vbNewLine);
+                                                                EchoText("Variables Loaded" + System.Environment.NewLine);
                                                                 oGlobals.VariableList.ClearUser();
                                                                 oGlobals.VariableList.Load();
                                                                 break;
@@ -595,7 +616,7 @@ namespace GenieClient.Genie
                                                         case "alias":
                                                         case "aliases":
                                                             {
-                                                                EchoText("Aliases Loaded" + Constants.vbNewLine);
+                                                                EchoText("Aliases Loaded" + System.Environment.NewLine);
                                                                 oGlobals.AliasList.Clear();
                                                                 oGlobals.AliasList.Load();
                                                                 break;
@@ -604,7 +625,7 @@ namespace GenieClient.Genie
                                                         case "class":
                                                         case "classes":
                                                             {
-                                                                EchoText("Classes Loaded" + Constants.vbNewLine);
+                                                                EchoText("Classes Loaded" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.Clear();
                                                                 oGlobals.ClassList.Load();
                                                                 EventClassChange?.Invoke();
@@ -616,7 +637,7 @@ namespace GenieClient.Genie
                                                         case "action":
                                                         case "actions":
                                                             {
-                                                                EchoText("Triggers Loaded" + Constants.vbNewLine);
+                                                                EchoText("Triggers Loaded" + System.Environment.NewLine);
                                                                 oGlobals.TriggerList.Clear();
                                                                 oGlobals.TriggerList.Load(oGlobals.Config.ConfigDir + @"\triggers.cfg");
                                                                 break;
@@ -627,7 +648,7 @@ namespace GenieClient.Genie
                                                         case "setting":
                                                         case "settings":
                                                             {
-                                                                EchoText("Settings Loaded" + Constants.vbNewLine);
+                                                                EchoText("Settings Loaded" + System.Environment.NewLine);
                                                                 oGlobals.Config.Load(oGlobals.Config.ConfigDir + @"\settings.cfg");
                                                                 break;
                                                             }
@@ -635,7 +656,7 @@ namespace GenieClient.Genie
                                                         case "macro":
                                                         case "macros":
                                                             {
-                                                                EchoText("Macros Loaded" + Constants.vbNewLine);
+                                                                EchoText("Macros Loaded" + System.Environment.NewLine);
                                                                 oGlobals.MacroList.Clear();
                                                                 oGlobals.MacroList.Load();
                                                                 break;
@@ -645,7 +666,7 @@ namespace GenieClient.Genie
                                                         case "subs":
                                                         case "substitute":
                                                             {
-                                                                EchoText("Substitutes Loaded" + Constants.vbNewLine);
+                                                                EchoText("Substitutes Loaded" + System.Environment.NewLine);
                                                                 oGlobals.SubstituteList.Clear();
                                                                 oGlobals.SubstituteList.Load(oGlobals.Config.ConfigDir + @"\substitutes.cfg");
                                                                 break;
@@ -657,7 +678,7 @@ namespace GenieClient.Genie
                                                         case "ignore":
                                                         case "ignores":
                                                             {
-                                                                EchoText("Gags Loaded" + Constants.vbNewLine);
+                                                                EchoText("Gags Loaded" + System.Environment.NewLine);
                                                                 oGlobals.GagList.Clear();
                                                                 oGlobals.GagList.Load();
                                                                 break;
@@ -669,7 +690,7 @@ namespace GenieClient.Genie
                                                                 oGlobals.HighlightList.Clear();
                                                                 oGlobals.HighlightRegExpList.Clear();
                                                                 oGlobals.HighlightBeginsWithList.Clear();
-                                                                EchoText("Highlights Loaded" + Constants.vbNewLine);
+                                                                EchoText("Highlights Loaded" + System.Environment.NewLine);
                                                                 oGlobals.LoadHighlights(oGlobals.Config.ConfigDir + @"\highlights.cfg");
                                                                 break;
                                                             }
@@ -677,7 +698,7 @@ namespace GenieClient.Genie
                                                         case "name":
                                                         case "names":
                                                             {
-                                                                EchoText("Names Loaded" + Constants.vbNewLine);
+                                                                EchoText("Names Loaded" + System.Environment.NewLine);
                                                                 oGlobals.NameList.Clear();
                                                                 oGlobals.NameList.Load(oGlobals.Config.ConfigDir + @"\names.cfg");
                                                                 break;
@@ -686,7 +707,7 @@ namespace GenieClient.Genie
                                                         case "preset":
                                                         case "presets":
                                                             {
-                                                                EchoText("Presets Loaded" + Constants.vbNewLine);
+                                                                EchoText("Presets Loaded" + System.Environment.NewLine);
                                                                 oGlobals.PresetList.Clear();
                                                                 oGlobals.PresetList.Load(oGlobals.Config.ConfigDir + @"\presets.cfg");
                                                                 break;
@@ -694,7 +715,7 @@ namespace GenieClient.Genie
 
                                                         case "layout":
                                                             {
-                                                                EchoText("Layout Loaded" + Constants.vbNewLine);
+                                                                EchoText("Layout Loaded" + System.Environment.NewLine);
                                                                 var tmp = string.Empty;
                                                                 EventLoadLayout?.Invoke(tmp);
                                                                 break;
@@ -702,45 +723,45 @@ namespace GenieClient.Genie
 
                                                         case "profile":
                                                             {
-                                                                EchoText("Profile Loaded" + Constants.vbNewLine);
+                                                                EchoText("Profile Loaded" + System.Environment.NewLine);
                                                                 EventLoadProfile?.Invoke();
                                                                 break;
                                                             }
 
                                                         case "all":
                                                             {
-                                                                EchoText("Variables Loaded" + Constants.vbNewLine);
+                                                                EchoText("Variables Loaded" + System.Environment.NewLine);
                                                                 oGlobals.VariableList.ClearUser();
                                                                 oGlobals.VariableList.Load();
-                                                                EchoText("Aliases Loaded" + Constants.vbNewLine);
+                                                                EchoText("Aliases Loaded" + System.Environment.NewLine);
                                                                 oGlobals.AliasList.Clear();
                                                                 oGlobals.AliasList.Load();
-                                                                EchoText("Classes Loaded" + Constants.vbNewLine);
+                                                                EchoText("Classes Loaded" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.Clear();
                                                                 oGlobals.ClassList.Load();
-                                                                EchoText("Triggers Loaded" + Constants.vbNewLine);
+                                                                EchoText("Triggers Loaded" + System.Environment.NewLine);
                                                                 oGlobals.TriggerList.Clear();
                                                                 oGlobals.TriggerList.Load(oGlobals.Config.ConfigDir + @"\triggers.cfg");
-                                                                EchoText("Settings Loaded" + Constants.vbNewLine);
+                                                                EchoText("Settings Loaded" + System.Environment.NewLine);
                                                                 oGlobals.Config.Load();
-                                                                EchoText("Macros Loaded" + Constants.vbNewLine);
+                                                                EchoText("Macros Loaded" + System.Environment.NewLine);
                                                                 oGlobals.MacroList.Clear();
                                                                 oGlobals.MacroList.Load();
-                                                                EchoText("Substitutes Loaded" + Constants.vbNewLine);
+                                                                EchoText("Substitutes Loaded" + System.Environment.NewLine);
                                                                 oGlobals.SubstituteList.Clear();
                                                                 oGlobals.SubstituteList.Load(oGlobals.Config.ConfigDir + @"\substitutes.cfg");
-                                                                EchoText("Gags Loaded" + Constants.vbNewLine);
+                                                                EchoText("Gags Loaded" + System.Environment.NewLine);
                                                                 oGlobals.GagList.Clear();
                                                                 oGlobals.GagList.Load();
                                                                 oGlobals.HighlightList.Clear();
                                                                 oGlobals.HighlightRegExpList.Clear();
                                                                 oGlobals.HighlightBeginsWithList.Clear();
-                                                                EchoText("Highlights Loaded" + Constants.vbNewLine);
+                                                                EchoText("Highlights Loaded" + System.Environment.NewLine);
                                                                 oGlobals.LoadHighlights(oGlobals.Config.ConfigDir + @"\highlights.cfg");
-                                                                EchoText("Names Loaded" + Constants.vbNewLine);
+                                                                EchoText("Names Loaded" + System.Environment.NewLine);
                                                                 oGlobals.NameList.Clear();
                                                                 oGlobals.NameList.Load(oGlobals.Config.ConfigDir + @"\names.cfg");
-                                                                EchoText("Presets Loaded" + Constants.vbNewLine);
+                                                                EchoText("Presets Loaded" + System.Environment.NewLine);
                                                                 oGlobals.PresetList.Clear();
                                                                 oGlobals.PresetList.Load(oGlobals.Config.ConfigDir + @"\presets.cfg");
                                                                 break;
@@ -760,53 +781,24 @@ namespace GenieClient.Genie
 
                                     case "cr":
                                         {
-                                            sResult = Constants.vbNewLine;
+                                            sResult = System.Environment.NewLine;
                                             break;
                                         }
 
                                     case "send":
                                         {
-                                            if (oArgs.Count > 1)
-                                            {
-                                                string s = oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1));
-                                                if ((s.ToLower() ?? "") == "clear")
-                                                {
-                                                    oGlobals.CommandQueue.Clear();
-                                                }
-                                                else
-                                                {
-                                                    double dPauseTime = 0;
-                                                    string sNumber = string.Empty;
-                                                    foreach (char c in s.ToCharArray())
-                                                    {
-                                                        if (Information.IsNumeric(c) | c == '.')
-                                                        {
-                                                            sNumber += Conversions.ToString(c);
-                                                        }
-                                                        else
-                                                        {
-                                                            break;
-                                                        }
-                                                    }
-
-                                                    if (sNumber.Length > 0 & (sNumber ?? "") != ".")
-                                                    {
-                                                        s = s.Substring(sNumber.Length).Trim();
-                                                        dPauseTime = double.Parse(sNumber);
-                                                    }
-
-                                                    if (s.Trim().Length > 0)
-                                                    {
-                                                        // Put it in queue
-                                                        oGlobals.CommandQueue.AddToQueue(dPauseTime, true, s);
-                                                    }
-                                                }
-                                            }
+                                            Send(oArgs);
 
                                             sResult = "";
                                             break;
                                         }
 
+                                    case "do":
+                                        {
+                                            Do(oArgs);
+                                            sResult = "";
+                                            break;
+                                        }
                                     case "put":
                                         {
                                             if (oArgs.Count > 1)
@@ -849,21 +841,21 @@ namespace GenieClient.Genie
                                                     {
                                                         case "load":
                                                             {
-                                                                EchoText("Variables Loaded" + Constants.vbNewLine);
+                                                                EchoText("Variables Loaded" + System.Environment.NewLine);
                                                                 oGlobals.VariableList.Load();
                                                                 break;
                                                             }
 
                                                         case "save":
                                                             {
-                                                                EchoText("Variables Saved" + Constants.vbNewLine);
+                                                                EchoText("Variables Saved" + System.Environment.NewLine);
                                                                 oGlobals.VariableList.Save();
                                                                 break;
                                                             }
 
                                                         case "clear":
                                                             {
-                                                                EchoText("Variables Cleared" + Constants.vbNewLine);
+                                                                EchoText("Variables Cleared" + System.Environment.NewLine);
                                                                 oGlobals.VariableList.ClearUser();
                                                                 break;
                                                             }
@@ -927,7 +919,7 @@ namespace GenieClient.Genie
                                             else
                                             {
                                                 // Add
-                                                string sName = oGlobals.ParseGlobalVars(oArgs[1].ToString()).ToLower();
+                                                string sName = oGlobals.ParseGlobalVars(oArgs[1].ToString());
                                                 string sValue = oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 2));
                                                 string sCmdRaw = "<stgupd>";
                                                 if (oGlobals.VariableList.ContainsKey(sName))
@@ -956,7 +948,7 @@ namespace GenieClient.Genie
                                         {
                                             if (oArgs.Count >= 1)
                                             {
-                                                string sName = oArgs[1].ToString().ToLower();
+                                                string sName = oArgs[1].ToString();
                                                 if (oGlobals.VariableList.ContainsKey(sName))
                                                 {
                                                     if (oGlobals.VariableList.get_GetVariable(sName).oType == Globals.Variables.VariableType.Server)
@@ -1000,9 +992,9 @@ namespace GenieClient.Genie
                                                     string argsVariable3 = "$" + oArgs[1].ToString();
                                                     VariableChanged(argsVariable3);
                                                 }
-                                                #pragma warning disable CS0168
+#pragma warning disable CS0168
                                                 catch (Exception ex)
-                                                #pragma warning restore CS0168
+#pragma warning restore CS0168
                                                 {
                                                     EchoText("Invalid #math expression: " + Utility.ArrayToString(oArgs, 1));
                                                 }
@@ -1099,7 +1091,7 @@ namespace GenieClient.Genie
                                                 if (sAction.Trim().Length > 0)
                                                 {
                                                     double argdDelay = Utility.StringToDouble(oArgs[1].ToString());
-                                                    oGlobals.CommandQueue.AddToQueue(argdDelay, true, sAction);
+                                                    oGlobals.CommandQueue.AddToQueue(argdDelay, sAction, false, false, false);
                                                 }
                                             }
                                             else if (oArgs.Count == 2)
@@ -1138,21 +1130,21 @@ namespace GenieClient.Genie
                                                     {
                                                         case "load":
                                                             {
-                                                                EchoText("Aliases Loaded" + Constants.vbNewLine);
+                                                                EchoText("Aliases Loaded" + System.Environment.NewLine);
                                                                 oGlobals.AliasList.Load();
                                                                 break;
                                                             }
 
                                                         case "save":
                                                             {
-                                                                EchoText("Aliases Saved" + Constants.vbNewLine);
+                                                                EchoText("Aliases Saved" + System.Environment.NewLine);
                                                                 oGlobals.AliasList.Save();
                                                                 break;
                                                             }
 
                                                         case "clear":
                                                             {
-                                                                EchoText("Aliases Cleared" + Constants.vbNewLine);
+                                                                EchoText("Aliases Cleared" + System.Environment.NewLine);
                                                                 oGlobals.AliasList.Clear();
                                                                 break;
                                                             }
@@ -1207,7 +1199,7 @@ namespace GenieClient.Genie
                                                         {
                                                             if ((sItem.Substring(1).ToLower() ?? "") == "all")
                                                             {
-                                                                EchoText("All Classes Activated" + Constants.vbNewLine);
+                                                                EchoText("All Classes Activated" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.ActivateAll();
                                                             }
                                                             else
@@ -1216,11 +1208,11 @@ namespace GenieClient.Genie
                                                                 oGlobals.ClassList.Add(sItem.Substring(1).ToLower(), argsValue);
                                                             }
                                                         }
-                                                        else if (sItem.StartsWith("-") & sItem.Length > 1)
+                                                        else if (sItem.StartsWith("-") && sItem.Length > 1)
                                                         {
                                                             if ((sItem.Substring(1).ToLower() ?? "") == "all")
                                                             {
-                                                                EchoText("All Classes InActivated" + Constants.vbNewLine);
+                                                                EchoText("All Classes InActivated" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.InActivateAll();
                                                             }
                                                             else
@@ -1240,7 +1232,7 @@ namespace GenieClient.Genie
                                                     {
                                                         case "load":
                                                             {
-                                                                EchoText("Classes Loaded" + Constants.vbNewLine);
+                                                                EchoText("Classes Loaded" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.Load();
                                                                 EventClassChange?.Invoke();
                                                                 break;
@@ -1248,14 +1240,14 @@ namespace GenieClient.Genie
 
                                                         case "save":
                                                             {
-                                                                EchoText("Classes Saved" + Constants.vbNewLine);
+                                                                EchoText("Classes Saved" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.Save();
                                                                 break;
                                                             }
 
                                                         case "clear":
                                                             {
-                                                                EchoText("Classes Cleared" + Constants.vbNewLine);
+                                                                EchoText("Classes Cleared" + System.Environment.NewLine);
                                                                 oGlobals.ClassList.Clear();
                                                                 break;
                                                             }
@@ -1285,7 +1277,7 @@ namespace GenieClient.Genie
                                                             case "on":
                                                             case "1":
                                                                 {
-                                                                    EchoText("All Classes Activated" + Constants.vbNewLine);
+                                                                    EchoText("All Classes Activated" + System.Environment.NewLine);
                                                                     oGlobals.ClassList.ActivateAll();
                                                                     break;
                                                                 }
@@ -1294,7 +1286,7 @@ namespace GenieClient.Genie
                                                             case "off":
                                                             case "0":
                                                                 {
-                                                                    EchoText("All Classes InActivated" + Constants.vbNewLine);
+                                                                    EchoText("All Classes InActivated" + System.Environment.NewLine);
                                                                     oGlobals.ClassList.InActivateAll();
                                                                     break;
                                                                 }
@@ -1338,21 +1330,21 @@ namespace GenieClient.Genie
                                                 {
                                                     case "load":
                                                         {
-                                                            EchoText("Triggers Loaded" + Constants.vbNewLine);
+                                                            EchoText("Triggers Loaded" + System.Environment.NewLine);
                                                             oGlobals.TriggerList.Load(oGlobals.Config.ConfigDir + @"\triggers.cfg");
                                                             break;
                                                         }
 
                                                     case "save":
                                                         {
-                                                            EchoText("Triggers Saved" + Constants.vbNewLine);
+                                                            EchoText("Triggers Saved" + System.Environment.NewLine);
                                                             oGlobals.TriggerList.Save(oGlobals.Config.ConfigDir + @"\triggers.cfg");
                                                             break;
                                                         }
 
                                                     case "clear":
                                                         {
-                                                            EchoText("Triggers Cleared" + Constants.vbNewLine);
+                                                            EchoText("Triggers Cleared" + System.Environment.NewLine);
                                                             oGlobals.TriggerList.Clear();
                                                             break;
                                                         }
@@ -1380,7 +1372,7 @@ namespace GenieClient.Genie
 
                                                 if (oGlobals.AddTrigger(oArgs[1].ToString(), oArgs[2].ToString(), false, false, sClass) == false)
                                                 {
-                                                    EchoText("Invalid regexp in trigger: " + oArgs[1].ToString() + Constants.vbNewLine);
+                                                    EchoText("Invalid regexp in trigger: " + oArgs[1].ToString() + System.Environment.NewLine);
                                                 }
                                             }
 
@@ -1429,14 +1421,14 @@ namespace GenieClient.Genie
                                                 {
                                                     case "load":
                                                         {
-                                                            EchoText("Settings Loaded" + Constants.vbNewLine);
+                                                            EchoText("Settings Loaded" + System.Environment.NewLine);
                                                             oGlobals.Config.Load(oGlobals.Config.ConfigDir + @"\settings.cfg");
                                                             break;
                                                         }
 
                                                     case "save":
                                                         {
-                                                            EchoText("Settings Saved" + Constants.vbNewLine);
+                                                            EchoText("Settings Saved" + System.Environment.NewLine);
                                                             oGlobals.Config.Save(oGlobals.Config.ConfigDir + @"\settings.cfg");
                                                             break;
                                                         }
@@ -1449,7 +1441,19 @@ namespace GenieClient.Genie
 
                                                     default:
                                                         {
-                                                            oGlobals.Config.SetSetting(oArgs[1].ToString());
+                                                            try
+                                                            {
+                                                                List<string> response = oGlobals.Config.SetSetting(oArgs[1].ToString());
+                                                                foreach (string message in response)
+                                                                {
+                                                                    EchoText(message + System.Environment.NewLine);
+                                                                }
+                                                            }
+                                                            catch(Exception ex)
+                                                            {
+                                                                EchoText("Invalid syntax: " + sRow + System.Environment.NewLine);
+                                                                EchoText(ex.Message + System.Environment.NewLine);
+                                                            }
                                                             break;
                                                         }
                                                 }
@@ -1458,12 +1462,16 @@ namespace GenieClient.Genie
                                             {
                                                 try
                                                 {
-                                                    oGlobals.Config.SetSetting(oArgs[1].ToString(), Utility.ArrayToString(oArgs, 2));
+                                                    List<string> response = oGlobals.Config.SetSetting(oArgs[1].ToString(), Utility.ArrayToString(oArgs, 2));
+                                                    foreach(string message in response)
+                                                    {
+                                                        EchoText(message + System.Environment.NewLine);
+                                                    }
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    EchoText("Invalid syntax: " + sRow + Constants.vbNewLine);
-                                                    EchoText(ex.Message + Constants.vbNewLine);
+                                                    EchoText("Invalid syntax: " + sRow + System.Environment.NewLine);
+                                                    EchoText(ex.Message + System.Environment.NewLine);
                                                 }
                                             }
 
@@ -1540,21 +1548,21 @@ namespace GenieClient.Genie
                                                     {
                                                         case "load":
                                                             {
-                                                                EchoText("Macros Loaded" + Constants.vbNewLine);
+                                                                EchoText("Macros Loaded" + System.Environment.NewLine);
                                                                 oGlobals.MacroList.Load();
                                                                 break;
                                                             }
 
                                                         case "save":
                                                             {
-                                                                EchoText("Macros Saved" + Constants.vbNewLine);
+                                                                EchoText("Macros Saved" + System.Environment.NewLine);
                                                                 oGlobals.MacroList.Save();
                                                                 break;
                                                             }
 
                                                         case "clear":
                                                             {
-                                                                EchoText("Macros Cleared" + Constants.vbNewLine);
+                                                                EchoText("Macros Cleared" + System.Environment.NewLine);
                                                                 oGlobals.MacroList.Clear();
                                                                 break;
                                                             }
@@ -1576,7 +1584,7 @@ namespace GenieClient.Genie
                                             // Add
                                             else if (oGlobals.MacroList.Add(oArgs[1].ToString(), oArgs[2].ToString()) == false)
                                             {
-                                                EchoText("Unknown key combination: " + oArgs[1].ToString() + Constants.vbNewLine);
+                                                EchoText("Unknown key combination: " + oArgs[1].ToString() + System.Environment.NewLine);
                                             }
 
                                             break;
@@ -1588,7 +1596,7 @@ namespace GenieClient.Genie
                                             {
                                                 if (oGlobals.MacroList.Remove(oArgs[1].ToString()) == -1)
                                                 {
-                                                    EchoText("Unknown key combination: " + oArgs[1].ToString() + Constants.vbNewLine);
+                                                    EchoText("Unknown key combination: " + oArgs[1].ToString() + System.Environment.NewLine);
                                                 }
                                             }
 
@@ -1618,21 +1626,21 @@ namespace GenieClient.Genie
                                                     {
                                                         case "load":
                                                             {
-                                                                EchoText("Substitutes Loaded" + Constants.vbNewLine);
+                                                                EchoText("Substitutes Loaded" + System.Environment.NewLine);
                                                                 oGlobals.SubstituteList.Load(oGlobals.Config.ConfigDir + @"\substitutes.cfg");
                                                                 break;
                                                             }
 
                                                         case "save":
                                                             {
-                                                                EchoText("Substitutes Saved" + Constants.vbNewLine);
+                                                                EchoText("Substitutes Saved" + System.Environment.NewLine);
                                                                 oGlobals.SubstituteList.Save(oGlobals.Config.ConfigDir + @"\substitutes.cfg");
                                                                 break;
                                                             }
 
                                                         case "clear":
                                                             {
-                                                                EchoText("Substitutes Cleared" + Constants.vbNewLine);
+                                                                EchoText("Substitutes Cleared" + System.Environment.NewLine);
                                                                 oGlobals.SubstituteList.Clear();
                                                                 break;
                                                             }
@@ -1664,7 +1672,7 @@ namespace GenieClient.Genie
                                                 string argReplaceBy = oGlobals.ParseGlobalVars(oArgs[2].ToString());
                                                 if (oGlobals.SubstituteList.Add(argsText6, argReplaceBy, false, sClass, true) == false)
                                                 {
-                                                    EchoText("Invalid regexp in substitute: " + oGlobals.ParseGlobalVars(oArgs[1].ToString()) + Constants.vbNewLine);
+                                                    EchoText("Invalid regexp in substitute: " + oGlobals.ParseGlobalVars(oArgs[1].ToString()) + System.Environment.NewLine);
                                                 }
                                             }
 
@@ -1701,21 +1709,21 @@ namespace GenieClient.Genie
                                                 {
                                                     case "load":
                                                         {
-                                                            EchoText("Gags Loaded" + Constants.vbNewLine);
+                                                            EchoText("Gags Loaded" + System.Environment.NewLine);
                                                             oGlobals.GagList.Load();
                                                             break;
                                                         }
 
                                                     case "save":
                                                         {
-                                                            EchoText("Gags Saved" + Constants.vbNewLine);
+                                                            EchoText("Gags Saved" + System.Environment.NewLine);
                                                             oGlobals.GagList.Save();
                                                             break;
                                                         }
 
                                                     case "clear":
                                                         {
-                                                            EchoText("Gags Cleared" + Constants.vbNewLine);
+                                                            EchoText("Gags Cleared" + System.Environment.NewLine);
                                                             oGlobals.GagList.Clear();
                                                             break;
                                                         }
@@ -1732,7 +1740,7 @@ namespace GenieClient.Genie
                                                             string argsText7 = oGlobals.ParseGlobalVars(Utility.ArrayToString(oArgs, 1));
                                                             if (oGlobals.GagList.Add(argsText7) == false)
                                                             {
-                                                                EchoText("Invalid regexp in gag: " + oGlobals.ParseGlobalVars(Utility.ArrayToString(oArgs, 1)) + Constants.vbNewLine);
+                                                                EchoText("Invalid regexp in gag: " + oGlobals.ParseGlobalVars(Utility.ArrayToString(oArgs, 1)) + System.Environment.NewLine);
                                                             }
 
                                                             break;
@@ -1759,7 +1767,7 @@ namespace GenieClient.Genie
                                                     {
                                                         case "load":
                                                             {
-                                                                EchoText("Presets Loaded" + Constants.vbNewLine);
+                                                                EchoText("Presets Loaded" + System.Environment.NewLine);
                                                                 oGlobals.PresetList.Load(oGlobals.Config.ConfigDir + @"\presets.cfg");
                                                                 var loadVar = "all";
                                                                 EventPresetChanged?.Invoke(loadVar);
@@ -1768,14 +1776,14 @@ namespace GenieClient.Genie
 
                                                         case "save":
                                                             {
-                                                                EchoText("Presets Saved" + Constants.vbNewLine);
+                                                                EchoText("Presets Saved" + System.Environment.NewLine);
                                                                 oGlobals.PresetList.Save(oGlobals.Config.ConfigDir + @"\presets.cfg");
                                                                 break;
                                                             }
 
                                                         case "clear":
                                                             {
-                                                                EchoText("Presets Cleared" + Constants.vbNewLine);
+                                                                EchoText("Presets Cleared" + System.Environment.NewLine);
                                                                 oGlobals.PresetList.Clear();
                                                                 var clearVar = "all";
                                                                 EventPresetChanged?.Invoke(clearVar);
@@ -1837,21 +1845,21 @@ namespace GenieClient.Genie
                                                 {
                                                     case "load":
                                                         {
-                                                            EchoText("Highlights Loaded" + Constants.vbNewLine);
+                                                            EchoText("Highlights Loaded" + System.Environment.NewLine);
                                                             oGlobals.LoadHighlights(oGlobals.Config.ConfigDir + @"\highlights.cfg");
                                                             break;
                                                         }
 
                                                     case "save":
                                                         {
-                                                            EchoText("Highlights Saved" + Constants.vbNewLine);
+                                                            EchoText("Highlights Saved" + System.Environment.NewLine);
                                                             oGlobals.SaveHighlights(oGlobals.Config.ConfigDir + @"\highlights.cfg");
                                                             break;
                                                         }
 
                                                     case "clear":
                                                         {
-                                                            EchoText("Highlights Cleared" + Constants.vbNewLine);
+                                                            EchoText("Highlights Cleared" + System.Environment.NewLine);
                                                             oGlobals.HighlightList.Clear();
                                                             oGlobals.HighlightRegExpList.Clear();
                                                             oGlobals.HighlightBeginsWithList.Clear();
@@ -1919,7 +1927,7 @@ namespace GenieClient.Genie
                                                                 }
                                                                 else
                                                                 {
-                                                                    EchoText("Invalid RegExp in highlight: " + oGlobals.ParseGlobalVars(Utility.ArrayToString(oArgs, 3)) + Constants.vbNewLine);
+                                                                    EchoText("Invalid RegExp in highlight: " + oGlobals.ParseGlobalVars(Utility.ArrayToString(oArgs, 3)) + System.Environment.NewLine);
                                                                 }
                                                             }
 
@@ -1960,21 +1968,21 @@ namespace GenieClient.Genie
                                                     {
                                                         case "load":
                                                             {
-                                                                EchoText("Names Loaded" + Constants.vbNewLine);
+                                                                EchoText("Names Loaded" + System.Environment.NewLine);
                                                                 oGlobals.NameList.Load(oGlobals.Config.ConfigDir + @"\names.cfg");
                                                                 break;
                                                             }
 
                                                         case "save":
                                                             {
-                                                                EchoText("Names Saved" + Constants.vbNewLine);
+                                                                EchoText("Names Saved" + System.Environment.NewLine);
                                                                 oGlobals.NameList.Save(oGlobals.Config.ConfigDir + @"\names.cfg");
                                                                 break;
                                                             }
 
                                                         case "clear":
                                                             {
-                                                                EchoText("Names Cleared" + Constants.vbNewLine);
+                                                                EchoText("Names Cleared" + System.Environment.NewLine);
                                                                 oGlobals.NameList.Clear();
                                                                 break;
                                                             }
@@ -2255,9 +2263,41 @@ namespace GenieClient.Genie
                                                     case "add":
                                                     case "show":
                                                         {
-                                                            EventAddWindow?.Invoke(oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 2)));
+                                                            int sWidth = 300;
+                                                            int sHeight = 200;
+                                                            int sTop = 10;
+                                                            int sLeft = 10;
+                                                            EventAddWindow?.Invoke(oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 2)), sWidth, sHeight, sTop, sLeft);
                                                             break;
                                                         }
+                                                    case "position":
+                                                        {
+                                                            try
+                                                            {
+                                                                if (oArgs.Count < 4) throw new Exception("Syntax Error: Window Name, and one of (Width, Height, Top, or Left) are required.");
+                                                                if (oArgs.Count > 7) throw new Exception("Error in command: " + sRow + ": " + (oArgs.Count - 7) + " too many Args in Position command." + Interaction.IIf((!int.TryParse(oArgs[3].ToString(), out _)), " Window names with spaces need to be \"enclosed\" in double quotes", ""));
+                                                                int? sWidth = null;
+                                                                int? sHeight = null;
+                                                                if ((!int.TryParse(oArgs[3].ToString(), out int width)) && (oArgs[3].ToString() != "") || (!int.TryParse(oArgs[4].ToString(), out int height)) && (oArgs[4].ToString() != ""))
+                                                                {
+                                                                    throw new Exception($"Syntax Error: Width ({oArgs[3].ToString()}) and/or Height ({oArgs[4].ToString()}) are not formatted correctly.");
+                                                                }
+                                                                if (width != 0) sWidth = width;
+                                                                if (height != 0) sHeight = height;
+                                                                int? sTop = null;
+                                                                int? sLeft = null;
+                                                                if (oArgs.Count > 5 && int.TryParse(oArgs[5].ToString(), out int top)) sTop = top;
+                                                                if (oArgs.Count > 6 && int.TryParse(oArgs[6].ToString(), out int left)) sLeft = left;
+
+                                                                EventPositionWindow?.Invoke(oGlobals.ParseGlobalVars(oArgs[2].ToString()), sWidth, sHeight, sTop, sLeft);
+                                                            }
+                                                            catch(Exception ex)
+                                                            {
+                                                                EchoColorText(ex.Message + System.Environment.NewLine, oGlobals.PresetList["scriptecho"].FgColor, oGlobals.PresetList["scriptecho"].BgColor, "");
+                                                            }
+                                                            break;
+                                                        }
+
 
                                                     case "remove":
                                                         {
@@ -2409,7 +2449,7 @@ namespace GenieClient.Genie
                                             }
                                             else
                                             {
-                                                EchoText("Unknown command: " + sRow + Constants.vbNewLine);
+                                                EchoText("Unknown command: " + sRow + System.Environment.NewLine);
                                             }
 
                                             break;
@@ -2442,14 +2482,91 @@ namespace GenieClient.Genie
             /* TODO ERROR: Skipped IfDirectiveTrivia *//* TODO ERROR: Skipped DisabledTextTrivia *//* TODO ERROR: Skipped EndIfDirectiveTrivia */
             return sResult;
         }
+     
+        private void Do(Genie.Collections.ArrayList oArgs)
+        {
+            if (oArgs.Count > 1)
+            {
+                string s = oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1));
+                if ((s.ToLower() ?? "") == "clear")
+                {
+                    oGlobals.CommandQueue.Clear();
+                }
+                else
+                {
+                    double dPauseTime = 0;
+                    string sNumber = string.Empty;
+                    foreach (char c in s.ToCharArray())
+                    {
+                        if (Information.IsNumeric(c) | c == '.')
+                        {
+                            sNumber += Conversions.ToString(c);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
 
+                    if (sNumber.Length > 0 & (sNumber ?? "") != ".")
+                    {
+                        s = s.Substring(sNumber.Length).Trim();
+                        dPauseTime = double.Parse(sNumber);
+                    }
 
-        private void Connect(ArrayList args, bool isLich = false)
+                    if (s.Trim().Length > 0)
+                    {
+                        // Put it in queue
+                        oGlobals.CommandQueue.AddToQueue(dPauseTime, s, true, true, true);
+                    }
+                }
+            }
+        }
+        private void Send(Genie.Collections.ArrayList oArgs)
+        {
+            if (oArgs.Count > 1)
+            {
+                string s = oGlobals.ParseGlobalVars(ParseAllArgs(oArgs, 1));
+                if ((s.ToLower() ?? "") == "clear")
+                {
+                    oGlobals.CommandQueue.Clear();
+                }
+                else
+                {
+                    double dPauseTime = 0;
+                    string sNumber = string.Empty;
+                    foreach (char c in s.ToCharArray())
+                    {
+                        if (Information.IsNumeric(c) | c == '.')
+                        {
+                            sNumber += Conversions.ToString(c);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    if (sNumber.Length > 0 & (sNumber ?? "") != ".")
+                    {
+                        s = s.Substring(sNumber.Length).Trim();
+                        dPauseTime = double.Parse(sNumber);
+                    }
+
+                    if (s.Trim().Length > 0)
+                    {
+                        // Put it in queue
+                        oGlobals.CommandQueue.AddToQueue(dPauseTime, s, true, false, false);
+                    }
+                }
+            }
+        }
+        private void Connect(Genie.Collections.ArrayList args, bool isLich = false)
         {
             if (args.Count == 1)
             {
                 // EchoText("Reconnect Command Received" & vbNewLine)
-                EventReconnect?.Invoke(isLich);
+                EventReconnect?.Invoke();
             }
             else if (args.Count == 5)
             {
@@ -2465,7 +2582,7 @@ namespace GenieClient.Genie
             {
                 var arg1 = oGlobals.ParseGlobalVars(args[1].ToString());
                 var argEmpty = "";
-                EventConnect?.Invoke(arg1, argEmpty, argEmpty, argEmpty,isLich);
+                EventConnect?.Invoke(arg1, argEmpty, argEmpty, argEmpty, isLich);
             }
             else
             {
@@ -2606,7 +2723,7 @@ namespace GenieClient.Genie
                         strLine = objReader.ReadLine().TrimStart();
                         if (strLine.Length > 0)
                         {
-                            EchoText(strLine + Constants.vbNewLine);
+                            EchoText(strLine + System.Environment.NewLine);
                         }
                     }
 
@@ -2614,9 +2731,9 @@ namespace GenieClient.Genie
                     objFile.Close();
                 }
             }
-            #pragma warning disable CS0168
+#pragma warning disable CS0168
             catch (FileNotFoundException ex)
-            #pragma warning restore CS0168
+#pragma warning restore CS0168
             {
                 EchoText("Topic does not exist.");
             }
@@ -2641,7 +2758,7 @@ namespace GenieClient.Genie
             SendText(sText, bUserInput, sOrigin);
         }
 
-        // Private Function ParseAllArgs(ByoList As Genie.Collections.ArrayList, Optional ByVal iStartIndex As Integer = 1) As String
+        // Private Function ParseAllArgs(ByoList As ArrayList, Optional ByVal iStartIndex As Integer = 1) As String
         // Dim sResult As String = String.Empty
 
         // For i As Integer = iStartIndex To oList.Count - 1
@@ -2657,7 +2774,7 @@ namespace GenieClient.Genie
         // Return sResult
         // End Function
 
-        private string ParseAllArgs(ArrayList oList, int iStartIndex = 1, bool bParseQuickSend = true)
+        private string ParseAllArgs(Genie.Collections.ArrayList oList, int iStartIndex = 1, bool bParseQuickSend = true)
         {
             string sResult = string.Empty;
             string sCommand = string.Empty;
@@ -2702,50 +2819,58 @@ namespace GenieClient.Genie
 
         private void ListSettings()
         {
-            EchoText(Constants.vbNewLine + "Active settings: " + Constants.vbNewLine);
-            EchoText("abortdupescript=" + oGlobals.Config.bAbortDupeScript.ToString() + Constants.vbNewLine);
-            EchoText("autolog=" + oGlobals.Config.bAutoLog.ToString() + Constants.vbNewLine);
-            EchoText("automapper=" + oGlobals.Config.bAutoMapper.ToString() + Constants.vbNewLine);
-            EchoText("commandchar=" + oGlobals.Config.cCommandChar.ToString() + Constants.vbNewLine);
-            EchoText("configdir=" + oGlobals.Config.sConfigDir + Constants.vbNewLine);
-            EchoText("connectstring=" + oGlobals.Config.sConnectString.ToString() + Constants.vbNewLine);
-            EchoText("editor=" + oGlobals.Config.sEditor + Constants.vbNewLine);
-            EchoText("ignoreclosealert=" + oGlobals.Config.bIgnoreCloseAlert.ToString() + Constants.vbNewLine);
-            EchoText("ignorescriptwarnings=" + oGlobals.Config.bIgnoreScriptWarnings.ToString() + Constants.vbNewLine);
-            EchoText("keepinputtext=" + oGlobals.Config.bKeepInput.ToString() + Constants.vbNewLine);
-            EchoText("logdir=" + oGlobals.Config.sLogDir + Constants.vbNewLine);
-            EchoText("maxgosubdepth=" + oGlobals.Config.iMaxGoSubDepth + Constants.vbNewLine);
-            EchoText("maxrowbuffer=" + oGlobals.Config.iBufferLineSize.ToString() + Constants.vbNewLine);
-            EchoText("monstercountignorelist=" + oGlobals.Config.sIgnoreMonsterList + Constants.vbNewLine);
-            EchoText("muted=" + (!oGlobals.Config.bPlaySounds).ToString() + Constants.vbNewLine);
-            EchoText("mycommandchar=" + oGlobals.Config.cMyCommandChar.ToString() + Constants.vbNewLine);
-            EchoText("parsegameonly=" + oGlobals.Config.bParseGameOnly.ToString() + Constants.vbNewLine);
-            EchoText("prompt=" + oGlobals.Config.sPrompt + Constants.vbNewLine);
-            EchoText("reconnect=" + oGlobals.Config.bReconnect.ToString() + Constants.vbNewLine);
-            EchoText("roundtimeoffset=" + oGlobals.Config.dRTOffset + Constants.vbNewLine);
-            EchoText("showlinks=" + oGlobals.Config.bShowLinks.ToString() + Constants.vbNewLine);
-            EchoText("scriptchar=" + oGlobals.Config.ScriptChar.ToString() + Constants.vbNewLine);
-            EchoText("scriptdir=" + oGlobals.Config.sScriptDir + Constants.vbNewLine);
-            EchoText("scripttimeout=" + oGlobals.Config.iScriptTimeout.ToString() + Constants.vbNewLine);
-            EchoText("separatorchar=" + oGlobals.Config.cSeparatorChar.ToString() + Constants.vbNewLine);
-            EchoText("spelltimer=" + oGlobals.Config.bShowSpellTimer.ToString() + Constants.vbNewLine);
-            EchoText("triggeroninput=" + oGlobals.Config.bTriggerOnInput.ToString() + Constants.vbNewLine);
-            EchoText("servertimeout=" + oGlobals.Config.iServerActivityTimeout.ToString() + Constants.vbNewLine);
-            EchoText("servertimeoutcommand=" + oGlobals.Config.sServerActivityCommand.ToString() + Constants.vbNewLine);
-            EchoText("usertimeout=" + oGlobals.Config.iUserActivityTimeout.ToString() + Constants.vbNewLine);
-            EchoText("usertimeoutcommand=" + oGlobals.Config.sUserActivityCommand.ToString() + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active settings: " + System.Environment.NewLine);
+            EchoText("abortdupescript=" + oGlobals.Config.bAbortDupeScript.ToString() + System.Environment.NewLine);
+            EchoText("autolog=" + oGlobals.Config.bAutoLog.ToString() + System.Environment.NewLine);
+            EchoText("automapper=" + oGlobals.Config.bAutoMapper.ToString() + System.Environment.NewLine);
+            EchoText("commandchar=" + oGlobals.Config.cCommandChar.ToString() + System.Environment.NewLine);
+            EchoText("connectstring=" + oGlobals.Config.sConnectString.ToString() + System.Environment.NewLine);
+            EchoText("editor=" + oGlobals.Config.sEditor + System.Environment.NewLine);
+            EchoText("ignoreclosealert=" + oGlobals.Config.bIgnoreCloseAlert.ToString() + System.Environment.NewLine);
+            EchoText("ignorescriptwarnings=" + oGlobals.Config.bIgnoreScriptWarnings.ToString() + System.Environment.NewLine);
+            EchoText("keepinputtext=" + oGlobals.Config.bKeepInput.ToString() + System.Environment.NewLine);
+            EchoText("maxgosubdepth=" + oGlobals.Config.iMaxGoSubDepth + System.Environment.NewLine);
+            EchoText("maxrowbuffer=" + oGlobals.Config.iBufferLineSize.ToString() + System.Environment.NewLine);
+            EchoText("monstercountignorelist=" + oGlobals.Config.sIgnoreMonsterList + System.Environment.NewLine);
+            EchoText("muted=" + (!oGlobals.Config.bPlaySounds).ToString() + System.Environment.NewLine);
+            EchoText("mycommandchar=" + oGlobals.Config.cMyCommandChar.ToString() + System.Environment.NewLine);
+            EchoText("parsegameonly=" + oGlobals.Config.bParseGameOnly.ToString() + System.Environment.NewLine);
+            EchoText("prompt=" + oGlobals.Config.sPrompt + System.Environment.NewLine);
+            EchoText("promptbreak=" + oGlobals.Config.PromptBreak + System.Environment.NewLine);
+            EchoText("promptforce=" + oGlobals.Config.PromptForce + System.Environment.NewLine);
+            EchoText("condensed=" + oGlobals.Config.Condensed + System.Environment.NewLine);
+            EchoText("reconnect=" + oGlobals.Config.bReconnect.ToString() + System.Environment.NewLine);
+            EchoText("roundtimeoffset=" + oGlobals.Config.dRTOffset + System.Environment.NewLine);
+            EchoText("showlinks=" + oGlobals.Config.bShowLinks.ToString() + System.Environment.NewLine);
+            EchoText("logdir=" + oGlobals.Config.sLogDir + System.Environment.NewLine);
+            EchoText("configdir=" + oGlobals.Config.sConfigDir + System.Environment.NewLine);
+            EchoText("plugindir=" + oGlobals.Config.sPluginDir + System.Environment.NewLine);
+            EchoText("mapdir=" + oGlobals.Config.sMapDir + System.Environment.NewLine);
+            EchoText("scriptdir=" + oGlobals.Config.sScriptDir + System.Environment.NewLine);
+            EchoText("scriptchar=" + oGlobals.Config.ScriptChar.ToString() + System.Environment.NewLine);
+            EchoText("scripttimeout=" + oGlobals.Config.iScriptTimeout.ToString() + System.Environment.NewLine);
+            EchoText("separatorchar=" + oGlobals.Config.cSeparatorChar.ToString() + System.Environment.NewLine);
+            EchoText("spelltimer=" + oGlobals.Config.bShowSpellTimer.ToString() + System.Environment.NewLine);
+            EchoText("triggeroninput=" + oGlobals.Config.bTriggerOnInput.ToString() + System.Environment.NewLine);
+            EchoText("servertimeout=" + oGlobals.Config.iServerActivityTimeout.ToString() + System.Environment.NewLine);
+            EchoText("servertimeoutcommand=" + oGlobals.Config.sServerActivityCommand.ToString() + System.Environment.NewLine);
+            EchoText("usertimeout=" + oGlobals.Config.iUserActivityTimeout.ToString() + System.Environment.NewLine);
+            EchoText("usertimeoutcommand=" + oGlobals.Config.sUserActivityCommand.ToString() + System.Environment.NewLine);
+            EchoText("connectscript=" + oGlobals.Config.ConnectScript.ToString() + System.Environment.NewLine);
+            EchoText("checkforupdates=" + oGlobals.Config.CheckForUpdates.ToString() + System.Environment.NewLine);
+            EchoText("autoupdate=" + oGlobals.Config.AutoUpdate.ToString() + System.Environment.NewLine);
         }
 
         private void ListColors()
         {
-            EchoText("Available colors: " + Constants.vbNewLine);
+            EchoText("Available colors: " + System.Environment.NewLine);
             KnownColor c;
             foreach (string s in Enum.GetNames(typeof(KnownColor)))
             {
                 c = (KnownColor)Enum.Parse(typeof(KnownColor), s);
                 if (c > KnownColor.Transparent & c < KnownColor.ButtonFace)
                 {
-                    string argsText = s + Constants.vbNewLine;
+                    string argsText = s + System.Environment.NewLine;
                     var argoColor = Color.FromKnownColor(c);
                     var argoBgColor = Color.Transparent;
                     EchoColorText(argsText, argoColor, argoBgColor);
@@ -2755,19 +2880,19 @@ namespace GenieClient.Genie
 
         private void ListKeys()
         {
-            EchoText("Available keycodes: " + Constants.vbNewLine);
+            EchoText("Available keycodes: " + System.Environment.NewLine);
             foreach (string s in Enum.GetNames(typeof(KeyCode.Keys)))
-                EchoText(s + Constants.vbNewLine);
+                EchoText(s + System.Environment.NewLine);
         }
 
         private void ListVariables(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active variables: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active variables: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.VariableList.AcquireReaderLock())
@@ -2781,7 +2906,7 @@ namespace GenieClient.Genie
                         {
                             if (((Globals.Variables.Variable)de.Value).oType == Globals.Variables.VariableType.SaveToFile)
                             {
-                                EchoText("$" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + Constants.vbNewLine);
+                                EchoText("$" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + System.Environment.NewLine);
                                 I += 1;
                             }
                         }
@@ -2793,7 +2918,7 @@ namespace GenieClient.Genie
                         {
                             if (((Globals.Variables.Variable)de.Value).oType == Globals.Variables.VariableType.Temporary)
                             {
-                                EchoText("(temporary) $" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + Constants.vbNewLine);
+                                EchoText("(temporary) $" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + System.Environment.NewLine);
                                 I += 1;
                             }
                         }
@@ -2805,7 +2930,7 @@ namespace GenieClient.Genie
                         {
                             if (((Globals.Variables.Variable)de.Value).oType == Globals.Variables.VariableType.Reserved)
                             {
-                                EchoText("(reserved) $" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + Constants.vbNewLine);
+                                EchoText("(reserved) $" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + System.Environment.NewLine);
                                 I += 1;
                             }
                         }
@@ -2817,7 +2942,7 @@ namespace GenieClient.Genie
                         {
                             if (((Globals.Variables.Variable)de.Value).oType == Globals.Variables.VariableType.Server)
                             {
-                                EchoText("(server) $" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + Constants.vbNewLine);
+                                EchoText("(server) $" + de.Key.ToString() + "=" + ((Globals.Variables.Variable)de.Value).sValue + System.Environment.NewLine);
                                 I += 1;
                             }
                         }
@@ -2825,7 +2950,7 @@ namespace GenieClient.Genie
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -2841,12 +2966,12 @@ namespace GenieClient.Genie
 
         private void ListSubstitutes(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active substitutes: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active substitutes: " + System.Environment.NewLine);
             // bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 // bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.SubstituteList.AcquireReaderLock())
@@ -2858,13 +2983,13 @@ namespace GenieClient.Genie
                     while (myEnumeratorWords.MoveNext())
                     {
                         Globals.SubstituteRegExp.Substitute o = (Globals.SubstituteRegExp.Substitute)myEnumeratorWords.Current;
-                        EchoText(o.sText + " => " + o.sReplaceBy + Constants.vbNewLine);
+                        EchoText(o.sText + " => " + o.sReplaceBy + System.Environment.NewLine);
                         I += 1;
                     }
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -2880,12 +3005,12 @@ namespace GenieClient.Genie
 
         private void ListGags(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active gags: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active gags: " + System.Environment.NewLine);
             // bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 // bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.GagList.AcquireReaderLock())
@@ -2897,13 +3022,13 @@ namespace GenieClient.Genie
                     while (myEnumeratorWords.MoveNext())
                     {
                         Globals.GagRegExp.Gag o = (Globals.GagRegExp.Gag)myEnumeratorWords.Current;
-                        EchoText(o.Text + Constants.vbNewLine);
+                        EchoText(o.Text + System.Environment.NewLine);
                         I += 1;
                     }
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -2919,12 +3044,12 @@ namespace GenieClient.Genie
 
         private void ListNames(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active names: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active names: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.NameList.AcquireReaderLock())
@@ -2936,7 +3061,7 @@ namespace GenieClient.Genie
                     {
                         if (bUsePattern == false | de.Value.ToString().Contains(sPattern))
                         {
-                            string argsText = Conversions.ToString(de.Key) + Constants.vbNewLine;
+                            string argsText = Conversions.ToString(de.Key) + System.Environment.NewLine;
                             EchoColorText(argsText, ((Names.Name)de.Value).FgColor, ((Names.Name)de.Value).BgColor);
                             I += 1;
                         }
@@ -2944,7 +3069,7 @@ namespace GenieClient.Genie
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -2960,12 +3085,12 @@ namespace GenieClient.Genie
 
         private void ListPresets(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active presets: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active presets: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.PresetList.AcquireReaderLock())
@@ -2977,7 +3102,7 @@ namespace GenieClient.Genie
                     {
                         if (bUsePattern == false | de.Value.ToString().Contains(sPattern))
                         {
-                            string argsText = Conversions.ToString(de.Key) + Constants.vbNewLine;
+                            string argsText = Conversions.ToString(de.Key) + System.Environment.NewLine;
                             EchoColorText(argsText, ((Globals.Presets.Preset)de.Value).FgColor, ((Globals.Presets.Preset)de.Value).BgColor);
                             I += 1;
                         }
@@ -2985,7 +3110,7 @@ namespace GenieClient.Genie
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3001,19 +3126,19 @@ namespace GenieClient.Genie
 
         private void ListHighlights(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active highlights: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active highlights: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.HighlightList.AcquireReaderLock())
             {
                 try
                 {
-                    EchoText("Highlight Strings: " + Constants.vbNewLine);
+                    EchoText("Highlight Strings: " + System.Environment.NewLine);
                     /* TODO ERROR: Skipped IfDirectiveTrivia *//* TODO ERROR: Skipped DisabledTextTrivia *//* TODO ERROR: Skipped EndIfDirectiveTrivia */
                     int I = 0;
                     foreach (DictionaryEntry de in oGlobals.HighlightList)
@@ -3022,7 +3147,7 @@ namespace GenieClient.Genie
                         {
                             if (((Highlights.Highlight)de.Value).HighlightWholeRow == false)
                             {
-                                string argsText = Conversions.ToString("[" + ((Highlights.Highlight)de.Value).ClassName + ":" + Interaction.IIf(((Highlights.Highlight)de.Value).IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + Constants.vbNewLine);
+                                string argsText = Conversions.ToString("[" + ((Highlights.Highlight)de.Value).ClassName + ":" + Interaction.IIf(((Highlights.Highlight)de.Value).IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + System.Environment.NewLine);
                                 EchoColorText(argsText, ((Highlights.Highlight)de.Value).FgColor, ((Highlights.Highlight)de.Value).BgColor);
                             }
 
@@ -3032,7 +3157,7 @@ namespace GenieClient.Genie
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3050,7 +3175,7 @@ namespace GenieClient.Genie
                 try
                 {
                     int I = 0;
-                    EchoText("Highlight Lines: " + Constants.vbNewLine);
+                    EchoText("Highlight Lines: " + System.Environment.NewLine);
                     /* TODO ERROR: Skipped IfDirectiveTrivia *//* TODO ERROR: Skipped DisabledTextTrivia *//* TODO ERROR: Skipped EndIfDirectiveTrivia */
                     foreach (DictionaryEntry de in oGlobals.HighlightList)
                     {
@@ -3058,7 +3183,7 @@ namespace GenieClient.Genie
                         {
                             if (((Highlights.Highlight)de.Value).HighlightWholeRow == true)
                             {
-                                string argsText1 = Conversions.ToString("[" + ((Highlights.Highlight)de.Value).ClassName + ":" + Interaction.IIf(((Highlights.Highlight)de.Value).IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + Constants.vbNewLine);
+                                string argsText1 = Conversions.ToString("[" + ((Highlights.Highlight)de.Value).ClassName + ":" + Interaction.IIf(((Highlights.Highlight)de.Value).IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + System.Environment.NewLine);
                                 EchoColorText(argsText1, ((Highlights.Highlight)de.Value).FgColor, ((Highlights.Highlight)de.Value).BgColor);
                             }
 
@@ -3068,7 +3193,7 @@ namespace GenieClient.Genie
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3086,13 +3211,13 @@ namespace GenieClient.Genie
                 try
                 {
                     int I = 0;
-                    EchoText("Highlight BeginsWith: " + Constants.vbNewLine);
+                    EchoText("Highlight BeginsWith: " + System.Environment.NewLine);
                     foreach (DictionaryEntry de in oGlobals.HighlightBeginsWithList)
                     {
                         if (bUsePattern == false | de.Value.ToString().Contains(sPattern))
                         {
                             Globals.HighlightLineBeginsWith.Highlight oHighlight = (Globals.HighlightLineBeginsWith.Highlight)de.Value;
-                            string argsText2 = Conversions.ToString("[" + oHighlight.ClassName + ":" + Interaction.IIf(oHighlight.IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + Constants.vbNewLine);
+                            string argsText2 = Conversions.ToString("[" + oHighlight.ClassName + ":" + Interaction.IIf(oHighlight.IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + System.Environment.NewLine);
                             EchoColorText(argsText2, oHighlight.FgColor, oHighlight.BgColor);
                             I += 1;
                         }
@@ -3100,7 +3225,7 @@ namespace GenieClient.Genie
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3118,13 +3243,13 @@ namespace GenieClient.Genie
                 try
                 {
                     int I = 0;
-                    EchoText("Highlight RegExp: " + Constants.vbNewLine);
+                    EchoText("Highlight RegExp: " + System.Environment.NewLine);
                     foreach (DictionaryEntry de in oGlobals.HighlightRegExpList)
                     {
                         if (bUsePattern == false | de.Value.ToString().Contains(sPattern))
                         {
                             Globals.HighlightRegExp.Highlight oHighlight = (Globals.HighlightRegExp.Highlight)de.Value;
-                            string argsText3 = Conversions.ToString("[" + oHighlight.ClassName + ":" + Interaction.IIf(oHighlight.IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + Constants.vbNewLine);
+                            string argsText3 = Conversions.ToString("[" + oHighlight.ClassName + ":" + Interaction.IIf(oHighlight.IsActive, "ON", "OFF") + "] " + Conversions.ToString(de.Key) + System.Environment.NewLine);
                             EchoColorText(argsText3, oHighlight.FgColor, oHighlight.BgColor);
                             I += 1;
                         }
@@ -3132,7 +3257,7 @@ namespace GenieClient.Genie
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3148,12 +3273,12 @@ namespace GenieClient.Genie
 
         private void ListMacros(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active macros: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active macros: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.MacroList.AcquireReaderLock())
@@ -3165,14 +3290,14 @@ namespace GenieClient.Genie
                     {
                         if (bUsePattern == false | de.Value.ToString().Contains(sPattern))
                         {
-                            EchoText(((Keys)Conversions.ToInteger(de.Key)).ToString() + "=" + ((Macros.Macro)de.Value).sAction + Constants.vbNewLine);
+                            EchoText(((Keys)Conversions.ToInteger(de.Key)).ToString() + "=" + ((Macros.Macro)de.Value).sAction + System.Environment.NewLine);
                             I += 1;
                         }
                     }
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3188,12 +3313,12 @@ namespace GenieClient.Genie
 
         private void ListTriggers(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active triggers: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active triggers: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.TriggerList.AcquireReaderLock())
@@ -3205,14 +3330,14 @@ namespace GenieClient.Genie
                     {
                         if (bUsePattern == false | de.Key.ToString().Contains(sPattern))
                         {
-                            EchoText(de.Key.ToString() + "=" + ((Globals.Triggers.Trigger)de.Value).sAction + Constants.vbNewLine);
+                            EchoText(de.Key.ToString() + "=" + ((Globals.Triggers.Trigger)de.Value).sAction + System.Environment.NewLine);
                             I += 1;
                         }
                     }
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3228,12 +3353,12 @@ namespace GenieClient.Genie
 
         private void ListAliases(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active aliases: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active aliases: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.AliasList.AcquireReaderLock())
@@ -3245,14 +3370,14 @@ namespace GenieClient.Genie
                     {
                         if (bUsePattern == false | de.Key.ToString().Contains(sPattern))
                         {
-                            EchoText(de.Key.ToString() + "=" + de.Value.ToString() + Constants.vbNewLine);
+                            EchoText(de.Key.ToString() + "=" + de.Value.ToString() + System.Environment.NewLine);
                             I += 1;
                         }
                     }
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3268,12 +3393,12 @@ namespace GenieClient.Genie
 
         private void ListClasses(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active classes: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active classes: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.ClassList.AcquireReaderLock())
@@ -3285,14 +3410,14 @@ namespace GenieClient.Genie
                     {
                         if (bUsePattern == false | de.Key.ToString().Contains(sPattern))
                         {
-                            EchoText(de.Key.ToString() + "=" + Conversions.ToBoolean(de.Value).ToString() + Constants.vbNewLine);
+                            EchoText(de.Key.ToString() + "=" + Conversions.ToBoolean(de.Value).ToString() + System.Environment.NewLine);
                             I += 1;
                         }
                     }
 
                     if (I == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3308,12 +3433,12 @@ namespace GenieClient.Genie
 
         private void ListEvents(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active event queue: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active event queue: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.Events.EventList.AcquireReaderLock())
@@ -3325,14 +3450,14 @@ namespace GenieClient.Genie
                     {
                         if (bUsePattern == false | ((Events.Queue.EventItem)oGlobals.Events.EventList.get_Item(I)).sAction.Contains(sPattern))
                         {
-                            EchoText("(" + ((Events.Queue.EventItem)oGlobals.Events.EventList.get_Item(I)).oDate + ") " + ((Events.Queue.EventItem)oGlobals.Events.EventList.get_Item(I)).sAction + Constants.vbNewLine);
+                            EchoText("(" + ((Events.Queue.EventItem)oGlobals.Events.EventList.get_Item(I)).oDate + ") " + ((Events.Queue.EventItem)oGlobals.Events.EventList.get_Item(I)).sAction + System.Environment.NewLine);
                             J += 1;
                         }
                     }
 
                     if (J == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally
@@ -3348,12 +3473,12 @@ namespace GenieClient.Genie
 
         private void ListCommandQueue(string sPattern)
         {
-            EchoText(Constants.vbNewLine + "Active command queue: " + Constants.vbNewLine);
+            EchoText(System.Environment.NewLine + "Active command queue: " + System.Environment.NewLine);
             bool bUsePattern = false;
             if (sPattern.Length > 0)
             {
                 bUsePattern = true;
-                EchoText("Filter: " + sPattern + Constants.vbNewLine);
+                EchoText("Filter: " + sPattern + System.Environment.NewLine);
             }
 
             if (oGlobals.CommandQueue.EventList.AcquireReaderLock())
@@ -3363,16 +3488,16 @@ namespace GenieClient.Genie
                     int J = 0;
                     for (int I = 0, loopTo = oGlobals.CommandQueue.EventList.Count - 1; I <= loopTo; I++)
                     {
-                        if (bUsePattern == false | ((CommandQueue.Queue.EventItem)oGlobals.CommandQueue.EventList.get_Item(I)).sAction.Contains(sPattern))
+                        if (bUsePattern == false | ((CommandQueue.Queue.EventItem)oGlobals.CommandQueue.EventList.get_Item(I)).Action.Contains(sPattern))
                         {
-                            EchoText("(" + ((CommandQueue.Queue.EventItem)oGlobals.CommandQueue.EventList.get_Item(I)).dDelay + ") " + ((CommandQueue.Queue.EventItem)oGlobals.CommandQueue.EventList.get_Item(I)).sAction + Constants.vbNewLine);
+                            EchoText("(" + ((CommandQueue.Queue.EventItem)oGlobals.CommandQueue.EventList.get_Item(I)).Delay + ") " + ((CommandQueue.Queue.EventItem)oGlobals.CommandQueue.EventList.get_Item(I)).Action + System.Environment.NewLine);
                             J += 1;
                         }
                     }
 
                     if (J == 0)
                     {
-                        EchoText("None." + Constants.vbNewLine);
+                        EchoText("None." + System.Environment.NewLine);
                     }
                 }
                 finally

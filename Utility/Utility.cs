@@ -2,10 +2,17 @@
 using System.Collections;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Runtime.InteropServices;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.CompilerServices;
+
+
+
 
 namespace GenieClient
 {
@@ -16,18 +23,52 @@ namespace GenieClient
             return "[" + Strings.FormatDateTime(DateAndTime.Now, DateFormat.ShortTime) + "]";
         }
 
+        public static void OpenBrowser(string url)
+        {
+            try
+            {
+                Process.Start(url);
+            }
+            catch
+            {
+                // hack because of this: https://github.com/dotnet/corefx/issues/10361
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    url = url.Replace("&", "^&");
+                    Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    Process.Start("xdg-open", url);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    Process.Start("open", url);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
         public static bool ExecuteProcess(string sFileName, string sArguments, bool closeProcess = true)
         {
             var myProcess = new Process();
             var myProcessStartInfo = new ProcessStartInfo(sFileName);
             myProcessStartInfo.WindowStyle = ProcessWindowStyle.Hidden;
             myProcessStartInfo.CreateNoWindow = true;
-            myProcessStartInfo.UseShellExecute = false;
-            myProcessStartInfo.RedirectStandardOutput = true;
+            myProcessStartInfo.UseShellExecute = true;
+            myProcessStartInfo.RedirectStandardOutput = false;
             myProcessStartInfo.Arguments = sArguments;
             myProcess.StartInfo = myProcessStartInfo;
+            FileInfo monitor = new FileInfo(sFileName);
+            do
+            {
+                Thread.Sleep(10);
+            } while (FileIsLocked(monitor));
             myProcess.Start();
-            var myStreamReader = myProcess.StandardOutput;
+            // var myStreamReader = myProcess.StandardOutput;
             // Read the standard output of the spawned process.
             if (closeProcess)
             {
@@ -35,8 +76,29 @@ namespace GenieClient
                     Thread.Sleep(10);
                 myProcess.Close();
             }
+            return true;
+        }
 
-            return default;
+        private static bool FileIsLocked(FileInfo file)
+        {
+            try
+            {
+                using (FileStream stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    stream.Close();
+                }
+            }
+            catch (IOException)
+            {
+                //the file is unavailable because it is:
+                //still being written to
+                //or being processed by another thread
+                //or does not exist (has already been processed)
+                return true;
+            }
+
+            //file is not locked
+            return false;
         }
 
         public static bool ValidateRegExp(string sRegExp)
@@ -54,41 +116,43 @@ namespace GenieClient
             }
         }
 
-        public static string EncryptText(string sKey, string sText)
+        public static byte[] EncryptText(string sKey, string sText)
         {
-            int i;
-            int x;
-            int y;
-            int z;
-            var loopTo = Strings.Len(sText);
-            for (i = 1; i <= loopTo; i++)
+            byte[] byteBuffer = new byte[sText.Length];
+            for(int i = 0; i < sText.Length; i++)
             {
-                x = Strings.Asc(Strings.Mid(sKey, i, 1));
-                y = Strings.Asc(Strings.Mid(sText, i, 1)) - 32;
-                z = (x ^ y) + 32;
-                Debug.WriteLine(z + ":" + ((Strings.Asc(Strings.Mid(sKey, i, 1)) ^ Strings.Asc(Strings.Mid(sText, i, 1)) - 32) + 32));
-                var midTmp = Conversions.ToString(Strings.Chr((Strings.Asc(Strings.Mid(sKey, i, 1)) ^ Strings.Asc(Strings.Mid(sText, i, 1)) - 32) + 32));
-            //    var midTmp = Conversions.ToString(Chr((Strings.Asc(Strings.Mid(sKey, i, 1)) ^ Strings.Asc(Strings.Mid(sText, i, 1)) - 32) + 32));
-                StringType.MidStmtStr(ref sText, i, 1, midTmp);
+                byteBuffer[i] = (byte)((sKey[i] ^ sText[i] - 32) + 32);
             }
-
-            return sText;
+            return byteBuffer;
         }
 
-        public static string Chr(int p_intByte)
+        public static byte[] EncryptText(byte[] bKey, string sText)
         {
-            byte[] bytBuffer = BitConverter.GetBytes(p_intByte);
-
-            return System.Text.Encoding.Unicode.GetString(bytBuffer);
+            byte[] byteBuffer = new byte[sText.Length];
+            for (int i = 0; i < sText.Length; i++)
+            {
+                byteBuffer[i] = (byte)(((sText[i] - 32) ^ bKey[i]) + 32);
+            }
+            return byteBuffer;
         }
 
-        // Nya keyserver rutiner:
-        // 1. Generera Hash av Nyckel
-        // 2. Hämta fil från webserver som heter <hash>.key
-        // 3. Rad 1 = Nyckel
-        // 4. Rad 2 = Hash av alla konton som är tillåtna
-        // 5. Rad 3 = Konton i vanlig text
+        public static bool ValidateServerCertificate(object sender, X509Certificate server_certificate, X509Chain chain, SslPolicyErrors reportedSSLPolicyErrors)
+        {
+            X509Certificate auth_cert = new X509Certificate(Encoding.Default.GetBytes("-----BEGIN CERTIFICATE-----\nMIIFUDCCAzigAwIBAgIJAP1LKTzYRs74MA0GCSqGSIb3DQEBCwUAMDwxCzAJBgNV\nBAYTAlVTMREwDwYDVQQIDAhNaXNzb3VyaTEaMBgGA1UECgwRU2ltdXRyb25pY3Mg\nQ29ycC4wIBcNMTgwNzE2MjIzNjMyWhgPMzAxNzExMTYyMjM2MzJaMDwxCzAJBgNV\nBAYTAlVTMREwDwYDVQQIDAhNaXNzb3VyaTEaMBgGA1UECgwRU2ltdXRyb25pY3Mg\nQ29ycC4wggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQD3IDOqTKtc+RmW\nZkv3isBPtqKD8rcTyjWFLzIazYnN7ZGmRMGtBTFATx4ugy1WiLih9pUOo84W5M7i\nMwZlbzxQAUPiRfX3U7xowe5LuzDHSxqWzylkkgmkdCX9K8JoN4FnuIWUMuMji7f/\ncY7eL/Flob6pFMD9U7NZDvVpYH05Fnn0LAsaK0DKtPcms5+EWNh+uYgTjZbaVMyY\nAPTEN8Rh0NpR8CWNqErM6kbt+4NBqzKMIrJEfSSgQHhkXK+r37O+d3rpmgyFFJPl\nfFHlwxEKutdhd5z0MWV/Fj+hc2p0pExy6yDJNYDgI+iMas5aYowtOgHx2sX+pGkc\nCYgBkAyhAmhCja0Nl/TEbOgksnSvwGLWufc+TF89CZMGI7UmRdez/YKc0DR/zhjF\nAPsMur8wJOtps9ZueYqTqJ9SvwRoRT8Nlz0q/891t7P97rZ/+9C1AVJFtuIp3zM4\nGusqdxRqAsgVrgZmsY7FPti8dNTDcv1ZUiFt/FfHGEyJXbt7oYDr1CDAX17KRcc3\nFK9XaChz4VNlLGCYbCjMdPIqTP4M4xdma2bBMza4Nmr1qioDO27wa9zBiSe3Mskg\ntUm1cBmZ7eDfGprmMzg4FKY3WEBHQQINyuh9UNfqIijgAiPw4GN7jCpV3YH3mPRP\nHKlRSkfq8DxD5SXVV0+DyRslzLuDEQIDAQABo1MwUTAdBgNVHQ4EFgQUFNOI3jnn\nfZpGE12nVsE9QTgX2IQwHwYDVR0jBBgwFoAUFNOI3jnnfZpGE12nVsE9QTgX2IQw\nDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAgEAPh0dOcZ4F2hQzwwr\nigLaY1p3fnjuGxnESwCPxJ3X+HVNclBh4Z3ndoonKunA+7CSxR9R4+ls/8RMmmr2\nQymzWYHTNbpe1dX+NgZGRTKiZEjqr8O0P02YEiLEUwG3YoWBSuka83LEDb+cB9AT\nUz90i1FMhGy9h+nBtP0r+mToQOnoKREmSoN03ucPVauionxAb7EqGlKciIyu4UE5\nuFY0kr5FqCIINtVIozyN2Xn/ATu6W5BlqET/PWapRa0230Pa6e3EKXVvjLxcMa2x\nyv+Pi/UQmMtpZXBu5qeYOPdppJs5WM33Q9PsCH7zGHziTbX85bhXIy1Y5TaGGjGK\nZZ/Je3zBn1JbyP+lC/DhRBpVwAbHqFCudxdSG4qcLR4r2hmTO8+LShXONmoH6XbR\nYwlb9aBrEYSr1cTrBnsFm07Bw3Ou9qXLfcF2nyT37U+DU8B9dcTll+Q1OPgYVbqG\nVfW7ZYQvvxb7EbXPcYedjGn1ZTGwJ5HRhJB0wNcH6wJIqw3y85hsqGFyw4zPOnDV\nZx2fEiycV6+6T8OIk2cwhZDcI0BI1iqKkRUdMLnVV/e3M9jERis1ValbeDVV+/8b\nLk71vz0A0lktJcULiMHWrym3IL7NTjuoZBJD8jgHETi4UEa0IB+Z7/Qr8F+UIygn\nAfksN019Wv0yPmHgubaJB2AT4ic=\n-----END CERTIFICATE-----"));
 
+            //SIMU uses self signed cert, if these are equal, OK.
+            if (auth_cert.Equals(server_certificate))
+                return true;
+
+            // Assuming they switch at some point to CA Signed this code should be used
+            //if (reportedSSLPolicyErrors == SslPolicyErrors.None)
+            //    return true;
+
+            Console.WriteLine("Certificate error: {0}", reportedSSLPolicyErrors);
+
+            // Do not allow this client to communicate with unauthenticated servers.
+            return false;
+        }
         public static string GenerateAccountHash(string sText)
         {
             string argsText = GenerateHashSHA256(sText);
@@ -212,7 +276,7 @@ namespace GenieClient
 
                 default:
                     {
-                        Debug.Print("Found unknown HTML character \"" + sText + "\"" + Constants.vbNewLine);
+                        Debug.Print("Found unknown HTML character \"" + sText + "\"" + System.Environment.NewLine);
                         return "";
                     }
             }
@@ -240,54 +304,7 @@ namespace GenieClient
             return span.TotalMilliseconds;
         }
 
-        // Public Shared Function SafeSplit(BysInput As String, BycSplitChar As Char) As Genie.Collections.ArrayList
-        // Dim oList As New Genie.Collections.ArrayList()
-
-        // Dim bInsideString As Boolean = False
-        // Dim cInsideStringChar As Char
-        // Dim iBracketDepth As Integer = 0
-        // Dim bPreviousWasEscapeChar As Boolean = False
-
-        // Dim ch As Char
-        // Dim l As Integer = 0
-        // Dim sp As Integer = 0
-
-        // For cp As Integer = 0 To sInput.Length - 1
-        // ch = sInput.Chars(cp)
-
-        // If bInsideString = True Then
-        // If ch = cInsideStringChar Then
-        // bInsideString = False
-        // End If
-        // ElseIf (ch = """"c) And bPreviousWasEscapeChar = False Then '  Or ch = "'"c
-        // bInsideString = True
-        // cInsideStringChar = ch
-        // ElseIf ch = cSplitChar And bPreviousWasEscapeChar = False Then
-        // If iBracketDepth = 0 Then
-        // l = (cp - sp)
-        // If l > 0 Then
-        // oList.Add(sInput.Substring(sp, l))
-        // End If
-        // sp = cp + 1 ' +1 So we don't get the split char
-        // End If
-        // End If
-
-        // If ch = "\"c Then
-        // bPreviousWasEscapeChar = Not bPreviousWasEscapeChar
-        // Else
-        // bPreviousWasEscapeChar = False
-        // End If
-        // Next
-
-        // l = (sInput.Length - sp)
-        // If l > 0 Then
-        // oList.Add(sInput.Substring(sp))
-        // End If
-
-        // Return oList
-        // End Function
-
-        public static string ArrayToString(ArrayList oList)
+        public static string ArrayToString(Genie.Collections.ArrayList oList)
         {
             string sReturnText = string.Empty;
             foreach (string sText in oList)
@@ -418,7 +435,7 @@ namespace GenieClient
             return oList;
         }
 
-        public static void AddArrayItem(ArrayList oList, string sText, bool bTreatUnderscoreAsSpace = false)
+        public static void AddArrayItem(Genie.Collections.ArrayList oList, string sText, bool bTreatUnderscoreAsSpace = false)
         {
             if (sText.StartsWith("\""))
             {
@@ -545,21 +562,7 @@ namespace GenieClient
                 double d = double.Parse(sValue, new System.Globalization.CultureInfo("en-US"));
                 return d;
             }
-            #pragma warning disable CS0168
-            catch (FormatException ex)
-            #pragma warning restore CS0168
-            {
-                return -1;
-            }
-            #pragma warning disable CS0168
-            catch (OverflowException ex)
-            #pragma warning restore CS0168
-            {
-                return -1;
-            }
-            #pragma warning disable CS0168
-            catch (InvalidCastException ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return -1;
             }
@@ -584,21 +587,7 @@ namespace GenieClient
                     return -1;
                 }
             }
-            #pragma warning disable CS0168
-            catch (FormatException ex)
-            #pragma warning restore CS0168
-            {
-                return -1;
-            }
-            #pragma warning disable CS0168
-            catch (OverflowException ex)
-            #pragma warning restore CS0168
-            {
-                return -1;
-            }
-            #pragma warning disable CS0168
-            catch (InvalidCastException ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return -1;
             }
@@ -663,7 +652,7 @@ namespace GenieClient
             }
         }
 
-        public static string ArrayToString(ArrayList oList, int iStartIndex)
+        public static string ArrayToString(Genie.Collections.ArrayList oList, int iStartIndex)
         {
             // This is for small strings. For large strings we would use StringBuilder
             string sReturnText = string.Empty;

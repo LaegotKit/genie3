@@ -6,73 +6,35 @@ namespace GenieClient.Genie.Collections
 {
     public class CollectionList : CollectionBase
     {
-        private ReaderWriterLock m_RWLock = new ReaderWriterLock();
+        private ReaderWriterLockSlim m_RWLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
-        public bool AcquireWriterLock(int millisecondsTimeout = 0)
+        public bool AcquireWriterLock()
         {
             try
             {
-                if (m_RWLock.IsWriterLockHeld | m_RWLock.IsReaderLockHeld)
+                if (m_RWLock.IsWriteLockHeld | m_RWLock.IsReadLockHeld)
+                {
                     return false;
-                m_RWLock.AcquireWriterLock(millisecondsTimeout);
-                return true;
+                }
+                
+                return m_RWLock.TryEnterWriteLock(500);
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
             }
         }
 
-        public bool AcquireReaderLock(int millisecondsTimeout = 0)
+        public bool AcquireReaderLock()
         {
             try
             {
-                if (m_RWLock.IsWriterLockHeld)
-                    return false;
-
-                if (m_RWLock.IsReaderLockHeld) return true;
-
-                m_RWLock.AcquireReaderLock(millisecondsTimeout);
-                return true;
+                if (m_RWLock.IsWriteLockHeld) return false;
+                return m_RWLock.TryEnterReadLock(500);
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
-            }
-        }
-
-        public LockCookie UpgradeToWriterLock(int millisecondsTimeout = 0)
-        {
-            try
-            {
-                if (m_RWLock.IsWriterLockHeld)
-                    return default;
-                return m_RWLock.UpgradeToWriterLock(millisecondsTimeout);
-            }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
-            {
-                return default;
-            }
-        }
-
-        public bool DowngradeToReaderLock(LockCookie cookie)
-        {
-            try
-            {
-                m_RWLock.DowngradeFromWriterLock(ref cookie);
-                return true;
-            }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
-            {
-                return default;
             }
         }
 
@@ -80,12 +42,10 @@ namespace GenieClient.Genie.Collections
         {
             try
             {
-                m_RWLock.ReleaseWriterLock();
+                m_RWLock.ExitWriteLock();
                 return true;
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
             }
@@ -95,12 +55,10 @@ namespace GenieClient.Genie.Collections
         {
             try
             {
-                m_RWLock.ReleaseReaderLock();
+                m_RWLock.ExitReadLock();
                 return true;
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
             }

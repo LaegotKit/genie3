@@ -6,78 +6,45 @@ namespace GenieClient.Genie.Collections
 {
     public class ArrayList : System.Collections.ArrayList
     {
-        private ReaderWriterLock m_oRWLock = new ReaderWriterLock();
+        private ReaderWriterLockSlim m_oRWLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         private const int m_iDefaultTimeout = 250;
 
-        public bool AcquireWriterLock(int millisecondsTimeout = 0)
+public bool AcquireWriterLock()
         {
             try
             {
-                m_oRWLock.AcquireWriterLock(millisecondsTimeout);
-                return true;
+                if(m_oRWLock.IsWriteLockHeld | m_oRWLock.IsReadLockHeld)
+                {
+                    return false;
+                }
+                return m_oRWLock.TryEnterWriteLock(500);
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
             }
         }
 
-        public bool AcquireReaderLock(int millisecondsTimeout = 0)
+        public bool AcquireReaderLock()
         {
             try
             {
-                m_oRWLock.AcquireReaderLock(millisecondsTimeout);
-                return true;
+                if (m_oRWLock.IsWriteLockHeld) return false;
+                return m_oRWLock.TryEnterReadLock(500);
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
             }
         }
-
-        public LockCookie UpgradeToWriterLock(int millisecondsTimeout = 0)
-        {
-            try
-            {
-                return m_oRWLock.UpgradeToWriterLock(millisecondsTimeout);
-            }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
-            {
-                return default;
-            }
-        }
-
-        public bool DowngradeToReaderLock(LockCookie cookie)
-        {
-            try
-            {
-                m_oRWLock.DowngradeFromWriterLock(ref cookie);
-                return true;
-            }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
-            {
-                return default;
-            }
-        }
-
         public bool ReleaseWriterLock()
         {
             try
             {
-                m_oRWLock.ReleaseWriterLock();
+                m_oRWLock.ExitWriteLock();
                 return true;
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
             }
@@ -87,12 +54,10 @@ namespace GenieClient.Genie.Collections
         {
             try
             {
-                m_oRWLock.ReleaseReaderLock();
+                m_oRWLock.ExitReadLock();
                 return true;
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+            catch 
             {
                 return false;
             }
@@ -106,12 +71,9 @@ namespace GenieClient.Genie.Collections
         {
         }
 
-        public ArrayList(ICollection collection) : base((ICollection)collection)
-        {
-        }
         public new void Clear()
         {
-            if (AcquireWriterLock(m_iDefaultTimeout))
+            if (AcquireWriterLock())
             {
                 try
                 {
@@ -130,7 +92,7 @@ namespace GenieClient.Genie.Collections
 
         public new int Add(object value)
         {
-            if (AcquireWriterLock(m_iDefaultTimeout))
+            if (AcquireWriterLock())
             {
                 try
                 {
@@ -145,11 +107,13 @@ namespace GenieClient.Genie.Collections
             {
                 throw new Exception("Unable to aquire writer lock.");
             }
+
+            return -1;
         }
 
         public new void Remove(object key)
         {
-            if (AcquireWriterLock(m_iDefaultTimeout))
+            if (AcquireWriterLock())
             {
                 try
                 {
@@ -181,7 +145,7 @@ namespace GenieClient.Genie.Collections
 
         public new void RemoveAt(int index)
         {
-            if (AcquireWriterLock(m_iDefaultTimeout))
+            if (AcquireWriterLock())
             {
                 try
                 {
@@ -205,7 +169,7 @@ namespace GenieClient.Genie.Collections
 
         public void set_Item(int index, object value)
         {
-            if (AcquireWriterLock(m_iDefaultTimeout))
+            if (AcquireWriterLock())
             {
                 try
                 {
@@ -224,7 +188,7 @@ namespace GenieClient.Genie.Collections
 
         public new void Sort()
         {
-            if (AcquireWriterLock(m_iDefaultTimeout))
+            if (AcquireWriterLock())
             {
                 try
                 {
@@ -243,7 +207,7 @@ namespace GenieClient.Genie.Collections
 
         public new void Sort(IComparer ic)
         {
-            if (AcquireWriterLock(m_iDefaultTimeout))
+            if (AcquireWriterLock())
             {
                 try
                 {

@@ -31,7 +31,7 @@ namespace GenieClient
 
         public event EventLinkClickedEventHandler EventLinkClicked;
 
-        public delegate void EventLinkClickedEventHandler(string link);
+        public delegate void EventLinkClickedEventHandler(string link, System.Windows.Forms.LinkClickedEventArgs e);
 
         public int TriggerDistance = 5;
         public int SnapDistance = 15;
@@ -791,7 +791,42 @@ namespace GenieClient
 
         private void RichTextBoxOutput_LinkClicked(object sender, LinkClickedEventArgs e)
         {
-            EventLinkClicked?.Invoke(e.LinkText);
+            string srcText = ((System.Windows.Forms.RichTextBox)sender).Text;
+            string LText = e.LinkText;
+            if (!LText.StartsWith("http"))
+            {
+                string Llink = srcText.Substring(e.LinkStart + e.LinkLength + 1, e.LinkLength);
+                if (Llink != LText)
+                {
+                    int endOfString = srcText.IndexOf("!#", e.LinkStart);
+                    LText = srcText.Substring(e.LinkStart + e.LinkLength, endOfString - e.LinkStart - e.LinkLength);
+                }
+                else if (!LText.StartsWith("http"))
+                {
+                    LText = "#" + e.LinkText;
+                }
+            }
+            EventLinkClicked?.Invoke(LText,e);
+        }
+
+        private void _RichTextBoxOutput_KeyDown(object sender, KeyEventArgs e)
+        {
+            this._RichTextBoxOutput.ComponentRichTextBox_KeyDown(sender, e);
+        }
+
+        private void _RichTextBoxOutput_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            this._RichTextBoxOutput.ComponentRichTextBox_KeyPress(sender, e);
+        }
+
+        private void _RichTextBoxOutput_MouseUp(object sender, MouseEventArgs e)
+        {
+            this._RichTextBoxOutput.ComponentRichTextBox_MouseUp(sender, e);
+        }
+
+        private void _RichTextBoxOutput_MouseDown(object sender, MouseEventArgs e)
+        {
+            this._RichTextBoxOutput.ComponentRichTextBox_MouseDown(sender, e);
         }
 
         private void _RichTextBoxOutput_KeyDown(object sender, KeyEventArgs e)

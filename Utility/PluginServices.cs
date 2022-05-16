@@ -15,9 +15,16 @@ namespace GenieClient
             public string AssemblyPath;
             public string ClassName;
             public string Key;
+            public string Interface;
+        }
+        
+        public static class Interfaces
+        {
+            public const string Legacy = "GeniePlugin.Interfaces.IPlugin";
+            public const string Modern = "GeniePlugin.Plugins.IPlugin";
         }
 
-        public static AvailablePlugin[] FindPlugins(string strPath, string strInterface)
+        public static AvailablePlugin[] FindPlugins(string strPath)
         {
             var Plugins = new Genie.Collections.ArrayList();
             string[] strDLLs;
@@ -35,11 +42,11 @@ namespace GenieClient
                     object strKey = Utility.GenerateKeyHash(argsText);
                     var readAllBytes = File.ReadAllBytes(strDLLs[intIndex]);
                     objDLL = Assembly.Load(readAllBytes);
-                    ExamineAssembly(objDLL, strDLLs[intIndex], strInterface, Conversions.ToString(strKey), Plugins);
+                    ExamineAssembly(objDLL, strDLLs[intIndex], Conversions.ToString(strKey), Plugins);
                 }
-                #pragma warning disable CS0168
+#pragma warning disable CS0168
                 catch (Exception e)
-                #pragma warning restore CS0168
+#pragma warning restore CS0168
                 {
                     // Error loading DLL, we don't need to do anything special
                 }
@@ -71,7 +78,7 @@ namespace GenieClient
             var readAllBytes = File.ReadAllBytes(strFile);
             objDLL = Assembly.Load(readAllBytes);
             var Plugins = new Genie.Collections.ArrayList();
-            ExamineAssembly(objDLL, strFile, strInterface, Conversions.ToString(strKey), Plugins);
+            ExamineAssembly(objDLL, strFile, Conversions.ToString(strKey), Plugins);
             if (Plugins.Count != 0)
             {
                 return (AvailablePlugin)Plugins[0];
@@ -94,7 +101,7 @@ namespace GenieClient
             return sb.ToString();
         }
 
-        private static void ExamineAssembly(Assembly objDLL, string AssemblyPath, string strInterface, string strKey, Genie.Collections.ArrayList Plugins)
+        private static void ExamineAssembly(Assembly objDLL, string AssemblyPath, string strKey, Genie.Collections.ArrayList Plugins)
         {
             Type objInterface;
             AvailablePlugin Plugin;
@@ -109,8 +116,13 @@ namespace GenieClient
                     if (!((objType.Attributes & TypeAttributes.Abstract) == TypeAttributes.Abstract))
                     {
 
-                        // See if this type implements our interface
-                        objInterface = objType.GetInterface(strInterface, true);
+                        // See if this type implements our legacy interface
+
+                        objInterface = objType.GetInterface(Interfaces.Legacy, true);
+                        if (objInterface is null)
+                        {
+                            objInterface = objType.GetInterface(Interfaces.Modern, true);
+                        }
                         if (!(objInterface is null))
                         {
                             // It does
@@ -119,6 +131,7 @@ namespace GenieClient
                             Plugin.AssemblyPath = AssemblyPath;
                             Plugin.ClassName = objType.FullName;
                             Plugin.Key = strKey;
+                            Plugin.Interface = objInterface.FullName;
                             Plugins.Add(Plugin);
                         }
                     }
@@ -139,9 +152,9 @@ namespace GenieClient
                 // Create and return class instance
                 objPlugin = objDLL.CreateInstance(Plugin.ClassName);
             }
-            #pragma warning disable CS0168
+#pragma warning disable CS0168
             catch (Exception e)
-            #pragma warning restore CS0168
+#pragma warning restore CS0168
             {
                 return null;
             }

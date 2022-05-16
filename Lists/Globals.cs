@@ -63,7 +63,7 @@ namespace GenieClient.Genie
         public GagRegExp GagList = new GagRegExp();
         public string GenieKey = string.Empty;
         public string GenieAccount = string.Empty;
-        public Genie.Collections.ArrayList PluginList = new Genie.Collections.ArrayList();
+        public Collections.ArrayList PluginList = new Collections.ArrayList();
         public bool PluginsEnabled = true;
         public Hashtable PluginVerifiedKeyList = new Hashtable();
         public Hashtable PluginPremiumKeyList = new Hashtable();
@@ -114,6 +114,7 @@ namespace GenieClient.Genie
         }
 
         public List<string> MonsterList = new List<string>();
+        public List<KeyValuePair<string, string>> VolatileHighlights = new List<KeyValuePair<string, string>>();
         public Regex MonsterListRegEx;
 
         public void UpdateMonsterListRegEx()
@@ -139,8 +140,11 @@ namespace GenieClient.Genie
             }
         }
 
-        public DateTime oSpellTimeStart;
+        public DateTime SpellTimeStart;
+        public DateTime RoundTimeEnd;
         private static DateTime m_oBlankTimer = DateTime.Parse("0001-01-01");
+
+
 
         public string ParseGlobalVars(object sVar)
         {
@@ -201,19 +205,25 @@ namespace GenieClient.Genie
         public string ParseSpecialVariables(string sText)
         {
             var argoDateEnd = DateTime.Now;
-            double d = Utility.GetTimeDiffInMilliseconds(oSpellTimeStart, argoDateEnd);
-            if (d > 0 & oSpellTimeStart != m_oBlankTimer)
+            double d = Utility.GetTimeDiffInMilliseconds(SpellTimeStart, argoDateEnd);
+            if (d > 0 & SpellTimeStart != m_oBlankTimer)
             {
                 sText = sText.Replace("@spelltime@", (d / 1000).ToString());
+                double spelllength = int.Parse(VariableList["casttime"].ToString()) - int.Parse(VariableList["spellstarttime"].ToString());
+                sText = sText.Replace("@spellpreptime@", spelllength.ToString());
+                double casttimeremaining = spelllength - (d / 1000);
+                sText = sText.Replace("@casttimeremaining@", casttimeremaining > 0 ? casttimeremaining.ToString() : "0");
             }
             else
             {
                 sText = sText.Replace("@spelltime@", "0");
+                sText = sText.Replace("@casttimeremaining@", "0");
             }
-
+            
             sText = sText.Replace("@time@", DateTime.Now.ToString("hh:mm:ss tt").Trim());
             sText = sText.Replace("@date@", DateTime.Now.ToString("M/d/yyyy").Trim());
             sText = sText.Replace("@datetime@", DateTime.Now.ToString("M/d/yyyy hh:mm:ss tt").Trim());
+            sText = sText.Replace("@utc@", DateTimeOffset.Now.ToUnixTimeSeconds().ToString());
             return sText;
         }
 
@@ -477,66 +487,23 @@ namespace GenieClient.Genie
 
             public void SetDefaultPresets()
             {
-                string argsKey = "roomname";
-                string argsColorName = "Yellow,DarkBlue";
-                Add(argsKey, argsColorName);
-                string argsKey1 = "roomdesc";
-                string argsColorName1 = "Silver";
-                Add(argsKey1, argsColorName1);
-                string argsKey2 = "creatures";
-                string argsColorName2 = "Cyan";
-                Add(argsKey2, argsColorName2);
-                string argsKey3 = "speech";
-                string argsColorName3 = "Yellow";
-                Add(argsKey3, argsColorName3);
-                string argsKey4 = "whispers";
-                string argsColorName4 = "Magenta";
-                Add(argsKey4, argsColorName4);
-                string argsKey5 = "thoughts";
-                string argsColorName5 = "Cyan";
-                Add(argsKey5, argsColorName5);
-                // Add("watching", "0")
-                // Add("commands", "0")
-                // Add("echo", "0")
-                // Add("scriptecho", "0")
-                // Add("scriptcommands", "0")
-                // Add("scripterrors", "0")
-                // Add("scriptdebug", "0")
-
-                // Add("default", "WhiteSmoke")
-                // Add("object", "Transparent,#152525")
-                // Add("objectnoun", "Cyan,#152525")
-
-                string argsKey6 = "roundtime";
-                string argsColorName6 = "MediumBlue,#00004b";
-                Add(argsKey6, argsColorName6);
-                string argsKey7 = "health";
-                string argsColorName7 = "Maroon,#400000";
-                Add(argsKey7, argsColorName7);
-                string argsKey8 = "mana";
-                string argsColorName8 = "Navy,#000040";
-                Add(argsKey8, argsColorName8);
-                string argsKey9 = "stamina";
-                string argsColorName9 = "Green,#004000";
-                Add(argsKey9, argsColorName9);
-                string argsKey10 = "spirit";
-                string argsColorName10 = "Purple,#400040";
-                Add(argsKey10, argsColorName10);
-                string argsKey11 = "concentration";
-                string argsColorName11 = "Navy,#000040";
-                Add(argsKey11, argsColorName11);
-                string argsKey12 = "inputuser";
-                string argsColorName12 = "Yellow";
-                Add(argsKey12, argsColorName12);
-                string argsKey13 = "inputother";
-                string argsColorName13 = "GreenYellow";
-                Add(argsKey13, argsColorName13);
-                string argsKey14 = "scriptecho";
-                string argsColorName14 = "Cyan";
-                Add(argsKey14, argsColorName14);
-                string argsKey15 = "familiar";
-                string argsColorName15 = "PaleGreen";
-                Add(argsKey15, argsColorName15);
+                Add("roomname", "Yellow,DarkBlue");
+                Add("roomdesc", "Silver");
+                Add("creatures", "Cyan");
+                Add("speech", "Yellow");
+                Add("whispers", "Magenta");
+                Add("thoughts", "Cyan");
+                Add("roundtime", "MediumBlue");
+                Add("health", "Maroon");
+                Add("mana", "Navy");
+                Add("stamina", "Green");
+                Add("spirit", "Purple");
+                Add("concentration", "Navy");
+                Add("inputuser", "Yellow");
+                Add("inputother", "GreenYellow");
+                Add("scriptecho", "Cyan");
+                Add("familiar", "PaleGreen");
+                Add("castbar", "Magenta");
             }
 
             public Presets()
@@ -830,177 +797,78 @@ namespace GenieClient.Genie
 
             public void SetDefaultGlobalVars()
             {
-                string argkey = "north";
-                string argvalue = "0";
-                Add(argkey, argvalue, VariableType.Reserved);
-                string argkey1 = "northeast";
-                string argvalue1 = "0";
-                Add(argkey1, argvalue1, VariableType.Reserved);
-                string argkey2 = "east";
-                string argvalue2 = "0";
-                Add(argkey2, argvalue2, VariableType.Reserved);
-                string argkey3 = "southeast";
-                string argvalue3 = "0";
-                Add(argkey3, argvalue3, VariableType.Reserved);
-                string argkey4 = "south";
-                string argvalue4 = "0";
-                Add(argkey4, argvalue4, VariableType.Reserved);
-                string argkey5 = "southwest";
-                string argvalue5 = "0";
-                Add(argkey5, argvalue5, VariableType.Reserved);
-                string argkey6 = "west";
-                string argvalue6 = "0";
-                Add(argkey6, argvalue6, VariableType.Reserved);
-                string argkey7 = "northwest";
-                string argvalue7 = "0";
-                Add(argkey7, argvalue7, VariableType.Reserved);
-                string argkey8 = "up";
-                string argvalue8 = "0";
-                Add(argkey8, argvalue8, VariableType.Reserved);
-                string argkey9 = "down";
-                string argvalue9 = "0";
-                Add(argkey9, argvalue9, VariableType.Reserved);
-                string argkey10 = "out";
-                string argvalue10 = "0";
-                Add(argkey10, argvalue10, VariableType.Reserved);
-                string argkey11 = "roomname";
-                string argvalue11 = "";
-                Add(argkey11, argvalue11, VariableType.Reserved);
-                string argkey12 = "roomdesc";
-                string argvalue12 = "";
-                Add(argkey12, argvalue12, VariableType.Reserved);
-                string argkey13 = "roomobjs";
-                string argvalue13 = "";
-                Add(argkey13, argvalue13, VariableType.Reserved);
-                string argkey14 = "roomplayers";
-                string argvalue14 = "";
-                Add(argkey14, argvalue14, VariableType.Reserved);
-                string argkey15 = "roomexits";
-                string argvalue15 = "";
-                Add(argkey15, argvalue15, VariableType.Reserved);
-                string argkey16 = "concentration";
-                string argvalue16 = "100";
-                Add(argkey16, argvalue16, VariableType.Reserved);
-                string argkey17 = "encumbrance";
-                string argvalue17 = "0";
-                Add(argkey17, argvalue17, VariableType.Reserved);
-                string argkey18 = "health";
-                string argvalue18 = "100";
-                Add(argkey18, argvalue18, VariableType.Reserved);
-                string argkey19 = "mana";
-                string argvalue19 = "100";
-                Add(argkey19, argvalue19, VariableType.Reserved);
-                string argkey20 = "spirit";
-                string argvalue20 = "100";
-                Add(argkey20, argvalue20, VariableType.Reserved);
-                string argkey21 = "stamina";
-                string argvalue21 = "100";
-                Add(argkey21, argvalue21, VariableType.Reserved);
-                string argkey22 = "charactername";
-                string argvalue22 = "";
-                Add(argkey22, argvalue22, VariableType.Reserved);
-                string argkey23 = "gamename";
-                string argvalue23 = "";
-                Add(argkey23, argvalue23, VariableType.Reserved);
-                string argkey24 = "kneeling";
-                string argvalue24 = "0";
-                Add(argkey24, argvalue24, VariableType.Reserved);
-                string argkey25 = "prone";
-                string argvalue25 = "0";
-                Add(argkey25, argvalue25, VariableType.Reserved);
-                string argkey26 = "sitting";
-                string argvalue26 = "0";
-                Add(argkey26, argvalue26, VariableType.Reserved);
-                string argkey27 = "standing";
-                string argvalue27 = "0";
-                Add(argkey27, argvalue27, VariableType.Reserved);
-                string argkey28 = "stunned";
-                string argvalue28 = "0";
-                Add(argkey28, argvalue28, VariableType.Reserved);
-                string argkey29 = "hidden";
-                string argvalue29 = "0";
-                Add(argkey29, argvalue29, VariableType.Reserved);
-                string argkey30 = "invisible";
-                string argvalue30 = "0";
-                Add(argkey30, argvalue30, VariableType.Reserved);
-                string argkey31 = "dead";
-                string argvalue31 = "0";
-                Add(argkey31, argvalue31, VariableType.Reserved);
-                string argkey32 = "joined";
-                string argvalue32 = "0";
-                Add(argkey32, argvalue32, VariableType.Reserved);
-                string argkey33 = "bleeding";
-                string argvalue33 = "0";
-                Add(argkey33, argvalue33, VariableType.Reserved);
-                string argkey34 = "webbed";
-                string argvalue34 = "0";
-                Add(argkey34, argvalue34, VariableType.Reserved);
-                string argkey35 = "roundtime";
-                string argvalue35 = "0";
-                Add(argkey35, argvalue35, VariableType.Reserved);
-                string argkey36 = "preparedspell";
-                string argvalue36 = "None";
-                Add(argkey36, argvalue36, VariableType.Reserved);
-                string argkey37 = "lefthand";
-                string argvalue37 = "Empty";
-                Add(argkey37, argvalue37, VariableType.Reserved);
-                string argkey38 = "lefthandnoun";
-                string argvalue38 = "";
-                Add(argkey38, argvalue38, VariableType.Reserved);
-                string argkey39 = "righthand";
-                string argvalue39 = "Empty";
-                Add(argkey39, argvalue39, VariableType.Reserved);
-                string argkey40 = "righthandnoun";
-                string argvalue40 = "";
-                Add(argkey40, argvalue40, VariableType.Reserved);
-                string argkey41 = "gametime";
-                string argvalue41 = "0";
-                Add(argkey41, argvalue41, VariableType.Reserved);
-                string argkey42 = "poisoned";
-                string argvalue42 = "0";
-                Add(argkey42, argvalue42, VariableType.Reserved);
-                string argkey43 = "diseased";
-                string argvalue43 = "0";
-                Add(argkey43, argvalue43, VariableType.Reserved);
-                string argkey44 = "connected";
-                string argvalue44 = "0";
-                Add(argkey44, argvalue44, VariableType.Reserved);
-                string argkey45 = "version";
-                var versionVar = My.MyProject.Application.Info.Version.ToString();
-                Add(argkey45, versionVar, VariableType.Reserved);
-                string argkey46 = "time";
-                string argvalue45 = "@time@";
-                Add(argkey46, argvalue45, VariableType.Reserved);
-                string argkey47 = "date";
-                string argvalue46 = "@date@";
-                Add(argkey47, argvalue46, VariableType.Reserved);
-                string argkey48 = "datetime";
-                string argvalue47 = "@datetime@";
-                Add(argkey48, argvalue47, VariableType.Reserved);
-                string argkey49 = "spelltime";
-                string argvalue48 = "@spelltime@";
-                Add(argkey49, argvalue48, VariableType.Reserved);
-                string argkey50 = "monstercount";
-                string argvalue49 = "0";
-                Add(argkey50, argvalue49, VariableType.Reserved);
-                string argkey51 = "monsterlist";
-                string argvalue50 = "";
-                Add(argkey51, argvalue50, VariableType.Reserved);
-                string argkey52 = "prompt";
-                string argvalue51 = "";
-                Add(argkey52, argvalue51, VariableType.Reserved);
-                string argkey53 = "lastcommand";
-                string argvalue52 = "";
-                Add(argkey53, argvalue52, VariableType.Reserved);
-                string argkey54 = "zoneid";
-                string argvalue53 = "0";
-                Add(argkey54, argvalue53, VariableType.Reserved);
-                string argkey55 = "zonename";
-                string argvalue54 = "0";
-                Add(argkey55, argvalue54, VariableType.Reserved);
-                string argkey56 = "scriptlist";
-                string argvalue55 = "none";
-                Add(argkey56, argvalue55, VariableType.Reserved);
+                Add("north", "0", VariableType.Reserved);
+                Add("northeast", "0", VariableType.Reserved);
+                Add("east", "0", VariableType.Reserved);
+                Add("southeast", "0", VariableType.Reserved);
+                Add("south", "0", VariableType.Reserved);
+                Add("southwest", "0", VariableType.Reserved);
+                Add("west", "0", VariableType.Reserved);
+                Add("northwest", "0", VariableType.Reserved);
+                Add("up", "0", VariableType.Reserved);
+                Add("down", "0", VariableType.Reserved);
+                Add("out", "0", VariableType.Reserved);
+                
+                Add("roomname", "", VariableType.Reserved);
+                Add("roomdesc", "", VariableType.Reserved);
+                Add("roomobjs", "", VariableType.Reserved);
+                Add("roomplayers", "", VariableType.Reserved);
+                Add("roomexits", "", VariableType.Reserved);
+                
+                Add("concentration", "100", VariableType.Reserved);
+                Add("encumbrance", "0", VariableType.Reserved);
+                Add("health", "100", VariableType.Reserved);
+                Add("mana", "100", VariableType.Reserved);
+                Add("spirit", "100", VariableType.Reserved);
+                Add("stamina", "100", VariableType.Reserved);
+                
+                Add("charactername", "", VariableType.Reserved);
+                Add("gamename", "", VariableType.Reserved);
+                Add("gamehost", "eaccess.play.net", VariableType.Reserved);
+                Add("gameport", "7910", VariableType.Reserved);
+
+
+                Add("kneeling", "0", VariableType.Reserved);
+                Add("prone", "0", VariableType.Reserved);
+                Add("sitting", "0", VariableType.Reserved);
+                Add("standing", "0", VariableType.Reserved);
+                Add("stunned", "0", VariableType.Reserved);
+                Add("hidden", "0", VariableType.Reserved);
+                Add("invisible", "0", VariableType.Reserved);
+                Add("dead", "0", VariableType.Reserved);
+                Add("joined", "0", VariableType.Reserved);
+                Add("bleeding", "0", VariableType.Reserved);
+                Add("webbed", "0", VariableType.Reserved);
+                Add("roundtime", "0", VariableType.Reserved);
+                Add("preparedspell", "None", VariableType.Reserved);
+                Add("lefthand", "Empty", VariableType.Reserved);
+                Add("lefthandnoun", "", VariableType.Reserved);
+                Add("righthand", "Empty", VariableType.Reserved);
+                Add("righthandnoun", "", VariableType.Reserved);
+
+                Add("gametime", "0", VariableType.Reserved);
+                               
+
+                Add("poisoned", "0", VariableType.Reserved);
+                Add("diseased", "0", VariableType.Reserved);
+                Add("connected", "0", VariableType.Reserved);
+                Add("version", My.MyProject.Application.Info.Version.ToString(), VariableType.Reserved);
+                Add("time", "@time@", VariableType.Reserved);
+                Add("date", "@date@", VariableType.Reserved);
+                Add("datetime", "@datetime@", VariableType.Reserved);
+                Add("spelltime", "@spelltime@", VariableType.Reserved);
+                Add("spellpreptime", "@spellpreptime@", VariableType.Reserved);
+                Add("spellstarttime", "0", VariableType.Reserved);
+                Add("casttime", "0", VariableType.Reserved);
+                Add("casttimeremaining", "@casttimeremaining@", VariableType.Reserved);
+                Add("monstercount", "0", VariableType.Reserved);
+                Add("monsterlist", "", VariableType.Reserved);
+                Add("prompt", "", VariableType.Reserved);
+                Add("lastcommand", "", VariableType.Reserved);
+                Add("zoneid", "0", VariableType.Reserved);
+                Add("zonename", "0", VariableType.Reserved);
+                Add("scriptlist", "none", VariableType.Reserved);
+                Add("repeatregex", @"^\.\.\.wait|^Sorry\, you may only type ahead|^You are still stunned|^You can\'t do that while|^You don\'t seem to be able", VariableType.Reserved);
             }
         }
 

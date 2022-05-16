@@ -19,19 +19,14 @@ mono_crash.*
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
-#[Rr]elease/
-#[Rr]eleases/
+[Rr]elease/
+[Rr]eleases/
 x64/
 x86/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
 bld/
-#[Bb]in/
-bin/Debug
-bin/
-obj/
-.vs/
-Plugin/
+[Bb]in/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
@@ -353,9 +348,7 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
-.vs/Genie3/v17/.suo
-obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
-obj/Debug/Genie3.csproj.AssemblyReference.cache
-.vs/Genie3/v17/.suo
-*.cache
-bin/Plugins.dll
+/Forms/Taleweaver.xcf
+/Forms/Taleweaver.png
+/Graphics/Taleweaver.xcf
+/Graphics/Taleweaver.png

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -14,6 +15,9 @@ namespace GenieClient
     public class Script
     {
         private const int m_iDefaultTimeout = 3500;
+        private const string GENIE_INTERNAL_ACTION_DO = "550276ca-49f0-4067-aa5b-b3cba4869564";
+        private const string PARAMETER_REGEX = @"\{.*?\}";
+        //private static readonly Regex PARAMETER_REGEX = new Regex(@"\{.*?\}"); //for script commands to receive data as {string of text} {parameters as a string}
 
         /* TODO ERROR: Skipped RegionDirectiveTrivia */
         private class ScriptLine
@@ -347,7 +351,7 @@ namespace GenieClient
                     IsInstant = bIsInstant;
                     if (bIsEvalAction == false)
                     {
-                        if (bIgnoreCase == true)
+                        if (bIgnoreCase)
                         {
                             oRegExp = new Regex(sTrigger, MyRegexOptions.options | RegexOptions.IgnoreCase);
                         }
@@ -361,27 +365,27 @@ namespace GenieClient
 
             public bool Add(string sTrigger, string sAction, int iFileId, int iFileRow, bool bIgnoreCase = false, bool bIsEvalAction = false, bool bIsInstant = false)
             {
-                if (sTrigger.StartsWith("e/") == true)
+                if (sTrigger.StartsWith("e/"))
                 {
                     sTrigger = sTrigger.Substring(2);
                     bIsEvalAction = true;
                 }
-                else if (sTrigger.ToLower().StartsWith("eval ") == true)
+                else if (sTrigger.ToLower().StartsWith("eval "))
                 {
                     sTrigger = sTrigger.Substring(5);
                     bIsEvalAction = true;
                 }
-                else if (sTrigger.StartsWith("/") == true)
+                else if (sTrigger.StartsWith("/"))
                 {
                     sTrigger = sTrigger.Substring(1);
                 }
 
-                if (sTrigger.EndsWith("/i") == true)
+                if (sTrigger.EndsWith("/i"))
                 {
                     bIgnoreCase = true;
                     sTrigger = sTrigger.Substring(0, sTrigger.Length - 2);
                 }
-                else if (sTrigger.EndsWith("/") == true)
+                else if (sTrigger.EndsWith("/"))
                 {
                     sTrigger = sTrigger.Substring(0, sTrigger.Length - 1);
                 }
@@ -417,7 +421,7 @@ namespace GenieClient
                     }
                 }
 
-                if (base.ContainsKey(sTrigger) == true)
+                if (base.ContainsKey(sTrigger))
                 {
                     base[sTrigger] = new Action(sTrigger, sAction, iFileId, iFileRow, bIgnoreCase, bIsEvalAction, sClass, bIsActive, bIsInstant);
                 }
@@ -431,29 +435,29 @@ namespace GenieClient
 
             public void Remove(string sText)
             {
-                if (sText.StartsWith("e/") == true)
+                if (sText.StartsWith("e/"))
                 {
                     sText = sText.Substring(2);
                 }
-                else if (sText.ToLower().StartsWith("eval ") == true)
+                else if (sText.ToLower().StartsWith("eval "))
                 {
                     sText = sText.Substring(5);
                 }
-                else if (sText.StartsWith("/") == true)
+                else if (sText.StartsWith("/"))
                 {
                     sText = sText.Substring(1);
                 }
 
-                if (sText.EndsWith("/i") == true)
+                if (sText.EndsWith("/i"))
                 {
                     sText = sText.Substring(0, sText.Length - 2);
                 }
-                else if (sText.EndsWith("/") == true)
+                else if (sText.EndsWith("/"))
                 {
                     sText = sText.Substring(0, sText.Length - 1);
                 }
 
-                if (base.ContainsKey(sText) == true)
+                if (base.ContainsKey(sText))
                 {
                     base.Remove(sText);
                 }
@@ -493,9 +497,9 @@ namespace GenieClient
                     Label = sLabel;
                     IgnoreCase = bIgnoreCase;
                     IsRegExp = bIsRegExp;
-                    if (IsRegExp == true)
+                    if (IsRegExp)
                     {
-                        if (bIgnoreCase == true)
+                        if (bIgnoreCase)
                         {
                             RegexMatch = new Regex(sText, MyRegexOptions.options | RegexOptions.IgnoreCase);
                         }
@@ -511,22 +515,21 @@ namespace GenieClient
             {
                 if (bIsRegExp)
                 {
-                    if (sText.StartsWith("/") == true)
+                    if (sText.StartsWith("/"))
                     {
                         sText = sText.Substring(1);
                     }
 
-                    if (sText.EndsWith("/i") == true)
+                    if (sText.EndsWith("/i"))
                     {
                         bIgnoreCase = true;
                         sText = sText.Substring(0, sText.Length - 2);
                     }
-                    else if (sText.EndsWith("/") == true)
+                    else if (sText.EndsWith("/"))
                     {
                         sText = sText.Substring(0, sText.Length - 1);
                     }
                 }
-
                 return base.Add(new Match(sText, sLabel, bIsRegExp, bIgnoreCase));
             }
         }
@@ -535,7 +538,7 @@ namespace GenieClient
         {
             public void Add(string key, string value)
             {
-                if (base.ContainsKey(key) == true)
+                if (base.ContainsKey(key))
                 {
                     base[key] = value;
                 }
@@ -555,6 +558,7 @@ namespace GenieClient
             counter,
             delay,
             deletevariable,
+            dofunc,
             echo,
             elsefunc,
             elseiffunc,
@@ -605,6 +609,7 @@ namespace GenieClient
             delayed,
             wait,
             waitfor,
+            waitdo,
             waiteval,
             move,
             matchwait,
@@ -624,7 +629,7 @@ namespace GenieClient
 
         public event EventSendTextEventHandler EventSendText;
 
-        public delegate void EventSendTextEventHandler(string sText, string sScript, bool bToQueue);
+        public delegate void EventSendTextEventHandler(string Text, string Script, bool ToQueue, bool DoCommand);
 
         public event EventDebugChangedEventHandler EventDebugChanged;
 
@@ -639,13 +644,18 @@ namespace GenieClient
         private Genie.Collections.ArrayList m_oScript = new Genie.Collections.ArrayList();
         private Genie.Collections.ArrayList m_oScriptFiles = new Genie.Collections.ArrayList();
         private Hashtable m_oScriptLabels = new Hashtable();
+        private Dictionary<string, Func<bool>> ScriptInternalLabels;
         private CurrentLine m_oCurrentLine = new CurrentLine();
         private ClassVariableList m_oLocalVarList = new ClassVariableList();
         private ClassActionList m_oActions = new ClassActionList();
-        private ClassMatchList m_oMatchList = new ClassMatchList();
+        private ClassMatchList MatchList = new ClassMatchList();
         private ScriptState m_CurrentState = ScriptState.running;
         private string m_sFileName = string.Empty;
         private DateTime m_oPauseEnd;
+        private string DoCommandText = string.Empty;
+        private string DoCommandRepeatRegex = string.Empty;
+        private string DoCommandAdditionalRegex = string.Empty;
+        private ClassMatchList DoCommandMatchList = new ClassMatchList();
         private bool m_bWaitForStringResume = true;
         private bool m_bWaitForStringIsRegExp = false;
         // private bool m_bWaitForStringIgnoreCase = false;
@@ -655,6 +665,7 @@ namespace GenieClient
         private bool m_bWaitForPrompt = true;
         private bool m_bWaitForMatch = true;
         private string m_sWaitForMatchLabel = string.Empty;
+        private Func<bool> WaitForMatchAction = null;
         private string m_sWaitForEventText = string.Empty;
         private bool m_bWaitForEvent = true;
         private DateTime m_oMatchTimeout;
@@ -925,7 +936,7 @@ namespace GenieClient
             {
                 string sVariableList = string.Empty;
                 foreach (DictionaryEntry de in m_oLocalVarList)
-                    sVariableList += de.Key.ToString() + "=" + de.Value.ToString() + Constants.vbNewLine;
+                    sVariableList += de.Key.ToString() + "=" + de.Value.ToString() + System.Environment.NewLine;
                 return sVariableList;
             }
         }
@@ -966,6 +977,15 @@ namespace GenieClient
         {
             m_oGlobals = cl;
             ScriptID = Guid.NewGuid().ToString();
+            
+            ScriptInternalLabels = new Dictionary<string, Func<bool>>();
+            LoadInternalLabels();
+        }
+
+        private void LoadInternalLabels()
+        {
+            ScriptInternalLabels = new Dictionary<string, Func<bool>>();
+            ScriptInternalLabels.Add(GENIE_INTERNAL_ACTION_DO, RepeatDoCommand);
         }
 
         // Public Shared Operator =(ByVal lsc As ClassScript, ByVal rsc As ClassScript) As Boolean
@@ -1058,7 +1078,7 @@ namespace GenieClient
             {
                 try
                 {
-                    if (m_bScriptPaused == true)
+                    if (m_bScriptPaused)
                     {
                         PrintText("[Script resumed: " + m_sFileName + "]");
                         m_bScriptPaused = false;
@@ -1087,7 +1107,7 @@ namespace GenieClient
             {
                 try
                 {
-                    if (m_CurrentState != ScriptState.scripterror & m_oScriptLabels.Contains("scripterror") == true)
+                    if (m_CurrentState != ScriptState.scripterror & m_oScriptLabels.Contains("scripterror"))
                     {
                         PrintText("[Script moving to scripterror label (" + m_sFileName + ")]");
                         m_oCurrentLine.ClearBlocks(); // Remove all {} depth on goto
@@ -1152,7 +1172,7 @@ namespace GenieClient
 
         public void TriggerParse(string text, bool bBufferWait = true)
         {
-            if (ScriptPaused == true | ScriptDone == true)
+            if (ScriptPaused | ScriptDone)
             {
                 return;
             }
@@ -1182,7 +1202,7 @@ namespace GenieClient
                             else if (!Information.IsNothing(m_oWaitForRegex))
                             {
                                 m_oRegMatch = m_oWaitForRegex.Match(text.Trim());
-                                if (m_oRegMatch.Success == true)
+                                if (m_oRegMatch.Success)
                                 {
                                     if (m_oRegMatch.Groups.Count > 0)
                                     {
@@ -1209,24 +1229,24 @@ namespace GenieClient
                     {
                         if (m_CurrentState == ScriptState.matchwait)
                         {
-                            foreach (ClassMatchList.Match ml in m_oMatchList)
+                            foreach (ClassMatchList.Match match in MatchList)
                             {
-                                if (ml.IsRegExp == false)
+                                if (match.IsRegExp == false)
                                 {
-                                    if (text.Contains(ml.Text) == true)
+                                    if (text.Contains(match.Text))
                                     {
-                                        m_sWaitForMatchLabel = ml.Label.ToLower();
+                                        m_sWaitForMatchLabel = match.Label.ToLower();
                                         m_bWaitForMatch = true;
                                         if (bBufferWait)
                                             SetBufferWait();
-                                        m_oMatchList.Clear();
+                                        MatchList.Clear();
                                         break;
                                     }
                                 }
-                                else if (!Information.IsNothing(ml.RegexMatch))
+                                else if (!Information.IsNothing(match.RegexMatch))
                                 {
-                                    m_oRegMatch = ml.RegexMatch.Match(text.Trim());
-                                    if (m_oRegMatch.Success == true)
+                                    m_oRegMatch = match.RegexMatch.Match(text.Trim());
+                                    if (m_oRegMatch.Success)
                                     {
                                         if (m_oRegMatch.Groups.Count > 0)
                                         {
@@ -1237,16 +1257,16 @@ namespace GenieClient
                                                 m_oCurrentLine.ArgList.Add(m_oRegMatch.Groups[J].Value);
                                         }
 
-                                        m_sWaitForMatchLabel = ml.Label.ToLower();
+                                        m_sWaitForMatchLabel = match.Label.ToLower();
                                         m_bWaitForMatch = true;
                                         if (bBufferWait)
                                             SetBufferWait();
-                                        m_oMatchList.Clear();
+                                        MatchList.Clear();
                                         break;
                                     }
                                 }
 
-                                if (ScriptDone == true)
+                                if (ScriptDone)
                                     break;
                             }
                         }
@@ -1260,12 +1280,12 @@ namespace GenieClient
                     {
                         foreach (DictionaryEntry de in m_oActions)
                         {
-                            if (((ClassActionList.Action)de.Value).IsActive == true)
+                            if (((ClassActionList.Action)de.Value).IsActive)
                             {
                                 if (((ClassActionList.Action)de.Value).IsEvalAction == false)
                                 {
                                     m_oRegMatch = ((ClassActionList.Action)de.Value).oRegExp.Match(text);
-                                    if (m_oRegMatch.Success == true)
+                                    if (m_oRegMatch.Success)
                                     {
                                         var ActionRegExpArg = new Genie.Collections.ArrayList();
                                         if (m_oRegMatch.Groups.Count > 0)
@@ -1281,7 +1301,7 @@ namespace GenieClient
                                 }
                             }
 
-                            if (ScriptDone == true)
+                            if (ScriptDone)
                                 break;
                         }
                     }
@@ -1337,7 +1357,7 @@ namespace GenieClient
 
         public void TriggerVariableChanged(string sVariableName) // When variables change
         {
-            if (ScriptPaused == true)
+            if (ScriptPaused)
             {
                 return;
             }
@@ -1348,9 +1368,9 @@ namespace GenieClient
                 {
                     foreach (DictionaryEntry de in m_oActions)
                     {
-                        if (((ClassActionList.Action)de.Value).IsEvalAction == true)
+                        if (((ClassActionList.Action)de.Value).IsEvalAction)
                         {
-                            if (((ClassActionList.Action)de.Value).IsActive == true)
+                            if (((ClassActionList.Action)de.Value).IsActive)
                             {
                                 if (de.Key.ToString().Contains(sVariableName))
                                 {
@@ -1375,7 +1395,7 @@ namespace GenieClient
                             }
                         }
 
-                        if (ScriptDone == true)
+                        if (ScriptDone)
                             break;
                     }
                 }
@@ -1412,7 +1432,7 @@ namespace GenieClient
 
         public void TriggerMove()
         {
-            if (ScriptPaused == true)
+            if (ScriptPaused)
             {
                 return;
             }
@@ -1439,7 +1459,7 @@ namespace GenieClient
 
         public void TriggerPrompt()
         {
-            if (ScriptPaused == true)
+            if (ScriptPaused)
             {
                 return;
             }
@@ -1466,7 +1486,7 @@ namespace GenieClient
 
         public void TickScript() // Called every X milliseconds in a separate thread
         {
-            if (ScriptPaused == true | ScriptDone == true)
+            if (ScriptPaused | ScriptDone)
             {
                 return;
             }
@@ -1516,7 +1536,7 @@ namespace GenieClient
                     }
                     else if (m_CurrentState == ScriptState.wait)
                     {
-                        if (m_bWaitForPrompt == true & DateTime.Now >= m_oWaitEnd)
+                        if (m_bWaitForPrompt & DateTime.Now >= m_oWaitEnd)
                         {
                             int argiLevel8 = 20;
                             string argsText8 = "Resume ScriptState.Wait";
@@ -1528,7 +1548,19 @@ namespace GenieClient
                     }
                     else if (m_CurrentState == ScriptState.waitfor)
                     {
-                        if (m_bWaitForStringResume == true & m_bBufferEnd == true)
+                        if (m_bWaitForStringResume & m_bBufferEnd)
+                        {
+                            int argiLevel7 = 20;
+                            string argsText7 = "Resume ScriptState.WaitFor";
+                            int argiFileId8 = 0;
+                            int argiFileRow8 = 0;
+                            PrintDebug(argiLevel7, argsText7, iFileId: argiFileId8, iFileRow: argiFileRow8);
+                            RunScript();
+                        }
+                    }
+                    else if (m_CurrentState == ScriptState.waitdo)
+                    {
+                        if (!string.IsNullOrWhiteSpace(DoCommandText) & m_bBufferEnd)
                         {
                             int argiLevel7 = 20;
                             string argsText7 = "Resume ScriptState.WaitFor";
@@ -1540,7 +1572,7 @@ namespace GenieClient
                     }
                     else if (m_CurrentState == ScriptState.waiteval)
                     {
-                        if (m_bWaitForEvent == true)
+                        if (m_bWaitForEvent)
                         {
                             int argiLevel6 = 20;
                             string argsText6 = "Resume ScriptState.WaitForEvent";
@@ -1552,7 +1584,7 @@ namespace GenieClient
                     }
                     else if (m_CurrentState == ScriptState.move)
                     {
-                        if (m_bWaitForMove == true)
+                        if (m_bWaitForMove)
                         {
                             int argiLevel5 = 20;
                             string argsText5 = "Resume ScriptState.Move";
@@ -1565,10 +1597,9 @@ namespace GenieClient
                     }
                     else if (m_CurrentState == ScriptState.matchwait)
                     {
-                        if (m_bWaitForMatch == true & m_bBufferEnd == true)
+                        if (m_bWaitForMatch & m_bBufferEnd)
                         {
-                            m_oMatchList.Clear();
-                            if (m_oScriptLabels.ContainsKey(m_sWaitForMatchLabel) == true)
+                            if (m_oScriptLabels.ContainsKey(m_sWaitForMatchLabel))
                             {
                                 int argiLevel2 = 20;
                                 string argsText2 = "Resume ScriptState.MatchWait";
@@ -1584,9 +1615,14 @@ namespace GenieClient
                                 int argiFileRow3 = 0;
                                 PrintDebug(argiLevel3, argsText3, iFileId: argiFileId3, iFileRow: argiFileRow3);
                                 m_oCurrentLine.ClearBlocks(); // Remove all {} depth on goto
+                                MatchList.Clear();
                                 RunScript(Conversions.ToInteger(m_oScriptLabels[m_sWaitForMatchLabel]));
                             }
-                            else
+                            else if (ScriptInternalLabels.ContainsKey(m_sWaitForMatchLabel))
+                            {
+                                ScriptInternalLabels[m_sWaitForMatchLabel]();
+                            }
+                            else 
                             {
                                 int argiFileId4 = 0;
                                 int argiFileRow4 = 0;
@@ -1596,7 +1632,7 @@ namespace GenieClient
 
                             m_bWaitForMatch = false;
                         }
-                        else if (m_bMatchTimeoutState == true)
+                        else if (m_bMatchTimeoutState)
                         {
                             if (DateTime.Now >= m_oMatchTimeout) // We have a timeout
                             {
@@ -1607,7 +1643,8 @@ namespace GenieClient
                                 PrintDebug(argiLevel4, argsText4, iFileId: argiFileId5, iFileRow: argiFileRow5);
                                 m_oTraceList.Add("matchwait timeout", GetFileName());
                                 // PrintText("MatchWait Timeout")
-                                m_oMatchList.Clear();
+                                MatchList.Clear();
+                                WaitForMatchAction = null;
                                 m_bMatchTimeoutState = false;
                                 RunScript();
                             }
@@ -1691,7 +1728,7 @@ namespace GenieClient
                         {
                             break;
                         }
-                        else if (ScriptPaused == true) // Running and paused
+                        else if (ScriptPaused) // Running and paused
                         {
                             break;
                         }
@@ -1762,14 +1799,14 @@ namespace GenieClient
                             }
                             else
                             {
-                                sJSBlockContent += oLine.sRowContent + Constants.vbNewLine;
+                                sJSBlockContent += oLine.sRowContent + System.Environment.NewLine;
                             }
                         }
                         else if (oLine.oFunction == ScriptFunctions.jsblock)
                         {
                             if (m_oCurrentLine.SkipBlock == false)
                             {
-                                sJSBlockContent = oLine.sRowContent + Constants.vbNewLine;
+                                sJSBlockContent = oLine.sRowContent + System.Environment.NewLine;
                                 iJsBlockLine = oLine.iFileRow;
                                 iJsFileId = oLine.iFileId;
                             }
@@ -1794,7 +1831,7 @@ namespace GenieClient
 
                             if (oLine.oFunction == ScriptFunctions.blockstart)
                             {
-                                if (m_oCurrentLine.SkipBlock == true)
+                                if (m_oCurrentLine.SkipBlock)
                                 {
                                     if (m_oCurrentLine.TargetBlockDepthValue <= 0)
                                     {
@@ -1808,7 +1845,7 @@ namespace GenieClient
                             else if (oLine.oFunction == ScriptFunctions.blockend)
                             {
                                 m_oCurrentLine.RemoveBlock();
-                                if (m_oCurrentLine.SkipBlock == true)
+                                if (m_oCurrentLine.SkipBlock)
                                 {
                                     if (m_oCurrentLine.TargetBlockDepthValue >= m_oCurrentLine.BlockCount)
                                     {
@@ -1821,7 +1858,7 @@ namespace GenieClient
                             if (m_oCurrentLine.SkipBlock == false)
                             {
                                 I = RunScriptRow(oLine, I);
-                                if (m_bStopRunning == true) // Action altered this
+                                if (m_bStopRunning) // Action altered this
                                 {
                                     int argiLevel1 = 30;
                                     string argsText1 = "Aborting previous thread: " + oLine.sRowContent;
@@ -1833,7 +1870,7 @@ namespace GenieClient
                                 }
                             }
                             // Just skip one line if no block was created
-                            else if (m_oCurrentLine.LastRowWasEvaluation == true)
+                            else if (m_oCurrentLine.LastRowWasEvaluation)
                             {
                                 if (oLine.oFunction != ScriptFunctions.iffunc)
                                 {
@@ -1863,7 +1900,7 @@ namespace GenieClient
 
         private void PrintTrace()
         {
-            PrintText("Trace follows:" + Constants.vbNewLine);
+            PrintText("Trace follows:" + System.Environment.NewLine);
             PrintText(TraceList);
         }
 
@@ -1873,13 +1910,13 @@ namespace GenieClient
             {
                 try
                 {
-                    if (bClear == true)
+                    if (bClear)
                     {
                         ClearScript();
                     }
 
                     m_sFileName = "";
-                    if (AppendFile(sFile) == true)
+                    if (AppendFile(sFile))
                     {
                         m_sFileName = sFile;
                         if (m_sFileName.ToLower().EndsWith(".cmd"))
@@ -2006,7 +2043,7 @@ namespace GenieClient
                 oLine.iFileId = iFileId;
                 oLine.iFileRow = iFileRow;
                 oLine.oFunction = GetFunctionType(Utility.GetKeywordString(sRow));
-                if (sRow.Contains("$") == true)
+                if (sRow.Contains("$"))
                 {
                     sRow = sRow.Replace(@"\$", @"\¤");
                     for (int i = 0, loopTo = m_oGlobals.Config.iArgumentCount - 1; i <= loopTo; i++)
@@ -2114,7 +2151,8 @@ namespace GenieClient
                     } // So we can abort previous script thread if any
                       // Reset all depth in blocks
                     m_oCurrentLine.Clear();
-                    m_oMatchList.Clear();
+                    MatchList.Clear();
+                    WaitForMatchAction = null;
                     m_oCurrentLine.LineValue = iResult;
                     return;
                 }
@@ -2133,7 +2171,7 @@ namespace GenieClient
 
         private string ParseVariables(string sText)
         {
-            if (sText.Contains("$") == true)
+            if (sText.Contains("$"))
             {
                 sText = sText.Replace(@"\$", @"\¤");
                 for (int i = 0, loopTo = m_oGlobals.Config.iArgumentCount - 1; i <= loopTo; i++)
@@ -2152,7 +2190,7 @@ namespace GenieClient
                 sText = sText.Replace(@"\¤", "$");
             }
 
-            if (sText.Contains("%") == true)
+            if (sText.Contains("%"))
             {
                 sText = sText.Replace(@"\%", @"\¤");
                 sText = sText.Replace(@"\$", "/¤");
@@ -2199,7 +2237,7 @@ namespace GenieClient
                 sText = m_oGlobals.ParseGlobalVars(sText);
             }
 
-            if (sText.Contains("@") == true) // On the fly variables and RegExpArgs
+            if (sText.Contains("@")) // On the fly variables and RegExpArgs
             {
                 var argoDateEnd = DateTime.Now;
                 double d = Utility.GetTimeDiffInMilliseconds(m_oTimerStart, argoDateEnd);
@@ -2306,7 +2344,7 @@ namespace GenieClient
                         string argsText1 = "goto " + Utility.GetArgumentString(ParsedLine);
                         PrintDebug(argiLevel1, argsText1, oLine.iFileId, oLine.iFileRow);
                         string strLabel = Utility.GetArgumentString(ParsedLine).ToLower();
-                        if (m_oScriptLabels.ContainsKey(strLabel) == true)
+                        if (m_oScriptLabels.ContainsKey(strLabel))
                         {
                             iRowIndex = Conversions.ToInteger(m_oScriptLabels[strLabel]);
                             m_oLocalVarList.Add("lastlabel", strLabel);
@@ -2334,7 +2372,7 @@ namespace GenieClient
                         {
                             m_oCurrentLine.Clear();
                         }
-                        else if (m_oScriptLabels.ContainsKey(strLabel) == true)
+                        else if (m_oScriptLabels.ContainsKey(strLabel))
                         {
                             m_oTraceList.Add("gosub " + strLabel, GetFileName(oLine.iFileId), oLine.iFileRow);
                             m_oCurrentLine.AddJump(iRowIndex, Utility.GetArgumentString(Utility.GetArgumentString(ParsedLine)));
@@ -2363,7 +2401,7 @@ namespace GenieClient
 
                 case ScriptFunctions.returnfunc:
                     {
-                        if (m_oCurrentLine.RemoveJump() == true)
+                        if (m_oCurrentLine.RemoveJump())
                         {
                             m_oTraceList.Add("return", GetFileName(oLine.iFileId), oLine.iFileRow);
                             int argiLevel4 = 1;
@@ -2418,7 +2456,7 @@ namespace GenieClient
 
                 case ScriptFunctions.iffunc:
                     {
-                        if (oLine.sRowContent.Trim().ToLower().EndsWith(" then") == true)
+                        if (oLine.sRowContent.Trim().ToLower().EndsWith(" then"))
                         {
                             m_oCurrentLine.LastRowWasEvaluation = true;
                         }
@@ -2440,7 +2478,7 @@ namespace GenieClient
 
                 case ScriptFunctions.whilefunc:
                     {
-                        if (oLine.sRowContent.ToLower().EndsWith("do") == true)
+                        if (oLine.sRowContent.ToLower().EndsWith("do"))
                         {
                             m_oCurrentLine.LastRowWasEvaluation = true;
                         }
@@ -2462,7 +2500,7 @@ namespace GenieClient
 
                 case ScriptFunctions.elsefunc:
                     {
-                        if (oLine.sRowContent.ToLower().EndsWith("else") == true)
+                        if (oLine.sRowContent.ToLower().EndsWith("else"))
                         {
                             m_oCurrentLine.LastRowWasEvaluation = true;
                         }
@@ -2512,7 +2550,7 @@ namespace GenieClient
                         EvalWaitString(Utility.GetArgumentString(ParsedLine));
                         break;
                     }
-
+                    
                 case ScriptFunctions.waiteval:
                     {
                         int argiLevel11 = 2;
@@ -2565,7 +2603,17 @@ namespace GenieClient
                         EvalSend(Utility.GetArgumentString(ParsedLine));
                         break;
                     }
-
+                case ScriptFunctions.dofunc:
+                    {
+                        DoCommandMatchList.Clear();
+                        DoCommandMatchList.AddRange(MatchList);
+                        if (!EvalDo(Utility.GetArgumentString(ParsedLine)))
+                        {
+                            PrintError("Invalid RegExp in Do: " + Utility.GetArgumentString(ParsedLine), oLine.iFileId, oLine.iFileRow);
+                            AbortOnScriptError();
+                        }
+                        break;
+                    }
                 case ScriptFunctions.save:
                     {
                         EvalSetvariableSave(Utility.GetArgumentString(ParsedLine));
@@ -2918,6 +2966,10 @@ namespace GenieClient
                 case "remove":
                     {
                         string argsText2 = Utility.GetArgumentString(sText);
+                        if (argsText2.ToLower().StartsWith("eval ") == false)
+                        {
+                            argsText2 = ParseVariables(argsText2);
+                        }
                         m_oActions.Remove(argsText2);
                         return;
                     }
@@ -2977,16 +3029,24 @@ namespace GenieClient
             {
                 return;
             }
-
-            double d = m_oEvalMath.Evaluate(Utility.GetArgumentString(sText));
-            int argiLevel = 4;
-            string argsText = "evalmath: " + sText;
-            PrintDebug(argiLevel, argsText, iFileId, iFileRow);
-            int argiLevel1 = 4;
-            string argsText1 = "evalmath result: " + sVar + "=" + d.ToString();
-            PrintDebug(argiLevel1, argsText1, iFileId, iFileRow);
-            m_oLocalVarList.Add(sVar, d.ToString());
-            TriggerVariableChanged("%" + sVar);
+            try
+            {
+                double d = m_oEvalMath.Evaluate(Utility.GetArgumentString(sText));
+                int argiLevel = 4;
+                string argsText = "evalmath: " + sText;
+                PrintDebug(argiLevel, argsText, iFileId, iFileRow);
+                int argiLevel1 = 4;
+                string argsText1 = "evalmath result: " + sVar + "=" + d.ToString();
+                PrintDebug(argiLevel1, argsText1, iFileId, iFileRow);
+                m_oLocalVarList.Add(sVar, d.ToString());
+                TriggerVariableChanged("%" + sVar);
+            }
+            catch(System.InvalidCastException ex)
+            {
+                PrintError(ex.Message + ". Local Variable " + sVar + " has been set to 0.");
+                m_oLocalVarList.Add(sVar, "0");
+                TriggerVariableChanged("%" + sVar);
+            }
         }
 
         private void EvalEval(string sText, int iFileId, int iFileRow)
@@ -3031,7 +3091,7 @@ namespace GenieClient
         private void DoMath(string sVar, string sText, int iFileId, int iFileRow)
         {
             double d = 0;
-            if (m_oLocalVarList.ContainsKey(sVar) == true)
+            if (m_oLocalVarList.ContainsKey(sVar))
             {
                 string argsValue = Conversions.ToString(m_oLocalVarList[sVar]);
                 d = Utility.StringToDouble(argsValue);
@@ -3090,16 +3150,17 @@ namespace GenieClient
         {
             if ((sText.ToLower() ?? "") == "clear")
             {
-                m_oMatchList.Clear();
+                MatchList.Clear();
+                WaitForMatchAction = null;
                 return true;
             }
 
-            if (bIsRegExp == true && Utility.ValidateRegExp(sText) == false)
+            if (bIsRegExp && Utility.ValidateRegExp(sText) == false)
             {
                 return false;
             }
 
-            m_oMatchList.Add(Utility.GetArgumentString(sText).Trim(), Utility.GetKeywordString(sText).Trim(), bIsRegExp);
+            MatchList.Add(Utility.GetArgumentString(sText).Trim(), Utility.GetKeywordString(sText).Trim(), bIsRegExp);
             return true;
         }
 
@@ -3135,26 +3196,26 @@ namespace GenieClient
             {
                 m_bWaitForStringIsRegExp = bIsRegExp;
                 // m_bWaitForStringIgnoreCase = false;
-                if (m_bWaitForStringIsRegExp == true)
+                if (m_bWaitForStringIsRegExp)
                 {
-                    if (sText.StartsWith("/") == true)
+                    if (sText.StartsWith("/"))
                     {
                         sText = sText.Substring(1);
                     }
 
-                    if (sText.EndsWith("/i") == true)
+                    if (sText.EndsWith("/i"))
                     {
                         // m_bWaitForStringIgnoreCase = true;
                         sText = sText.Substring(0, sText.Length - 2);
                     }
-                    else if (sText.EndsWith("/") == true)
+                    else if (sText.EndsWith("/"))
                     {
                         sText = sText.Substring(0, sText.Length - 1);
                     }
                 }
 
                 m_oWaitForRegex = null;
-                if (bIsRegExp == true)
+                if (bIsRegExp)
                 {
                     if (Utility.ValidateRegExp(sText) == false)
                     {
@@ -3211,6 +3272,62 @@ namespace GenieClient
             }
         }
 
+        private bool EvalDo(string FullCommand)
+        {
+            if (FullCommand.Trim().Length > 0)
+            {
+                if ((FullCommand.ToLower() ?? "") == "clear")
+                {
+                    MatchList.Clear();
+                    return true;
+                }
+
+                if (!Utility.ValidateRegExp(FullCommand))
+                {
+                    return false;
+                }
+                MatchCollection doRegex = Regex.Matches(FullCommand, PARAMETER_REGEX);
+                if(doRegex.Count == 0)
+                {   
+                    DoCommandText = FullCommand;
+                    DoCommandAdditionalRegex = "";
+                    DoCommandRepeatRegex = m_oGlobals.VariableList["repeatregex"].ToString();
+                }
+                else if(doRegex.Count == 1)
+                {   
+                    DoCommandText = doRegex[0].Captures[0].ToString();
+                    DoCommandText = DoCommandText.Substring(1, DoCommandText.Length - 2);
+                    DoCommandAdditionalRegex = "";
+                    DoCommandRepeatRegex = m_oGlobals.VariableList["repeatregex"].ToString();
+                }
+                else if(doRegex.Count > 1)
+                {
+                    DoCommandText = doRegex[0].Captures[0].ToString();
+                    DoCommandText = DoCommandText.Substring(1, DoCommandText.Length - 2);
+                    DoCommandAdditionalRegex = doRegex[1].Captures[0].ToString() ;
+                    DoCommandAdditionalRegex = DoCommandAdditionalRegex.Substring(1, DoCommandAdditionalRegex.Length - 2);
+                    DoCommandRepeatRegex = m_oGlobals.VariableList["repeatregex"].ToString() + "|" + DoCommandAdditionalRegex;
+                }
+                MatchList.Add(DoCommandRepeatRegex, GENIE_INTERNAL_ACTION_DO, true);
+                SendText(DoCommandText, true, true);
+            }
+            return true;
+        }
+
+        private bool RepeatDoCommand()
+        {
+            MatchList.Clear();
+            MatchList.AddRange(DoCommandMatchList);
+            if (string.IsNullOrWhiteSpace(DoCommandAdditionalRegex))
+            {
+                EvalDo(DoCommandText);
+            }
+            else
+            {
+                EvalDo("{" + DoCommandText + "} {" + DoCommandRepeatRegex + "}");
+            }
+            return false;
+        }
         private void EvalSetvariableSave(string sText)
         {
             AddLocalVariable("s", sText);
@@ -3281,7 +3398,7 @@ namespace GenieClient
                 m_oScriptFiles.Clear();
                 m_oCurrentLine.Clear();
                 m_oActions.Clear();
-                m_oMatchList.Clear();
+                MatchList.Clear();
                 m_oTimerStart = default;
                 m_dTimerLastTime = 0;
                 m_bWaitForEvent = true;
@@ -3533,7 +3650,7 @@ namespace GenieClient
                 }
 
                 sr.sRowContent = sRow;
-                if (sRow.TrimEnd().EndsWith(":") == true & sRow.Trim().IndexOf(" ") == -1)
+                if (sRow.TrimEnd().EndsWith(":") & sRow.Trim().IndexOf(" ") == -1)
                 {
                     sRow = sRow.TrimEnd();
                     AddLabel(sRow.Substring(0, sRow.Length - 1), m_oScript.Count, iFileId, iFileRow);
@@ -3543,10 +3660,10 @@ namespace GenieClient
                 {
                     string strKeyword = Utility.GetKeywordString(sRow).ToLower();
                     string strArgument = Utility.GetArgumentString(sRow);
-                    if (strKeyword.StartsWith("if_") == true)
+                    if (strKeyword.StartsWith("if_"))
                     {
                         // if %argcount >= x then
-                        if (strArgument.ToLower().StartsWith("then") == true)
+                        if (strArgument.ToLower().StartsWith("then"))
                         {
                             sr.sRowContent = "if %argcount >= " + strKeyword.Substring(3) + " " + strArgument;
                         }
@@ -3796,7 +3913,10 @@ namespace GenieClient
                     {
                         return ScriptFunctions.send;
                     }
-
+                case "do":
+                    {
+                        return ScriptFunctions.dofunc;
+                    }
                 case "exit":
                     {
                         return ScriptFunctions.exitfunc;
@@ -4000,7 +4120,7 @@ namespace GenieClient
         private void AddLabel(string strLabel, int intArrayIndex, int iFileId, int iFileRow)
         {
             strLabel = strLabel.ToLower().Trim();
-            if (m_oScriptLabels.ContainsKey(strLabel) == true)
+            if (m_oScriptLabels.ContainsKey(strLabel))
             {
                 if (m_oGlobals.Config.bIgnoreScriptWarnings == false)
                 {
@@ -4034,7 +4154,7 @@ namespace GenieClient
                 sErrorMessage += "(" + iFileRow.ToString() + ")";
             }
 
-            EventPrintError?.Invoke(sErrorMessage + ": " + sText + "]" + Constants.vbNewLine);
+            EventPrintError?.Invoke(sErrorMessage + ": " + sText + "]" + System.Environment.NewLine);
         }
 
         private void PrintJSError(string sText, [Optional, DefaultParameterValue(0)] int iFileId, [Optional, DefaultParameterValue(0)] int iFileRow)
@@ -4060,7 +4180,7 @@ namespace GenieClient
                 sErrorMessage += "(" + iFileRow.ToString() + ")";
             }
 
-            EventPrintError?.Invoke(sErrorMessage + ": " + sText + "]" + Constants.vbNewLine);
+            EventPrintError?.Invoke(sErrorMessage + ": " + sText + "]" + System.Environment.NewLine);
         }
 
         private void PrintDebug(int iLevel, string sText, [Optional, DefaultParameterValue(0)] int iFileId, [Optional, DefaultParameterValue(0)] int iFileRow)
@@ -4095,27 +4215,27 @@ namespace GenieClient
             // Everything above 9 has to be an exact match to show
             if (DebugLevel > 9 & DebugLevel == iLevel)
             {
-                EventPrintText?.Invoke(sDebugMessage + sText + Constants.vbNewLine, Color.RoyalBlue, Color.Transparent);
+                EventPrintText?.Invoke(sDebugMessage + sText + System.Environment.NewLine, Color.RoyalBlue, Color.Transparent);
             }
             else if (DebugLevel <= 9 & DebugLevel >= iLevel)
             {
-                EventPrintText?.Invoke(sDebugMessage + sText + Constants.vbNewLine, Color.RoyalBlue, Color.Transparent);
+                EventPrintText?.Invoke(sDebugMessage + sText + System.Environment.NewLine, Color.RoyalBlue, Color.Transparent);
             }
         }
 
         private void PrintText(string sText)
         {
-            EventPrintText?.Invoke(sText + Constants.vbNewLine, Color.White, Color.Transparent);
+            EventPrintText?.Invoke(sText + System.Environment.NewLine, Color.White, Color.Transparent);
         }
 
         private void PrintEcho(string sText)
         {
-            EventPrintText?.Invoke(sText + Constants.vbNewLine, m_oGlobals.PresetList["scriptecho"].FgColor, Color.Transparent);
+            EventPrintText?.Invoke(sText + System.Environment.NewLine, m_oGlobals.PresetList["scriptecho"].FgColor, Color.Transparent);
         }
 
-        private void SendText(string text, bool queue = false)
+        private void SendText(string text, bool queue = false, bool docommand = false)
         {
-            EventSendText?.Invoke(text, ScriptName, queue);
+            EventSendText?.Invoke(text, ScriptName, queue, docommand);
         }
     }
 }

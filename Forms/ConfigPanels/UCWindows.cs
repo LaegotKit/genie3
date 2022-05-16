@@ -201,7 +201,7 @@ namespace GenieClient
                     CheckBoxTimeStamp.Checked = fo.TimeStamp;
                     CheckBoxNameListOnly.Checked = fo.NameListOnly;
                     GroupBoxBase.Enabled = true;
-                    GroupBoxBase.Tag = new Genie.Collections.ArrayList(ListViewBase.SelectedItems);
+                    GroupBoxBase.Tag = new ArrayList(ListViewBase.SelectedItems);
                     ToolStripButtonRemove.Enabled = true;
                     RemoveToolStripMenuItem.Enabled = true;
                 }
@@ -215,7 +215,7 @@ namespace GenieClient
                 CheckBoxNameListOnly.Checked = false;
                 CheckBoxTimeStamp.Enabled = false;
                 CheckBoxNameListOnly.Enabled = false;
-                GroupBoxBase.Tag = new Genie.Collections.ArrayList(ListViewBase.SelectedItems);
+                GroupBoxBase.Tag = new ArrayList(ListViewBase.SelectedItems);
                 ToolStripButtonRemove.Enabled = true;
                 RemoveToolStripMenuItem.Enabled = true;
             }
@@ -332,14 +332,14 @@ namespace GenieClient
                     fo.NameListOnly = CheckBoxNameListOnly.Checked;
                     var li = ListViewBase.Items.Add(TextBoxTitle.Text);
                     li.SubItems.Add(GetFontName(fo.RichTextBoxOutput.Font));
-                    li.SubItems.Add(GetFontName(fo.RichTextBoxOutput.Font));
+                    li.SubItems.Add(Genie.ColorCode.ColorToString(fo.RichTextBoxOutput.ForeColor, fo.RichTextBoxOutput.BackColor));
                     li.SubItems.Add(fo.TimeStamp.ToString());
                     li.SubItems.Add(fo.NameListOnly.ToString());
                     li.Tag = fo;
                     li.Selected = true;
                     ToolStripButtonRemove.Enabled = true;
                     RemoveToolStripMenuItem.Enabled = true;
-                    GroupBoxBase.Tag = new Genie.Collections.ArrayList(ListViewBase.SelectedItems);
+                    GroupBoxBase.Tag = new ArrayList(ListViewBase.SelectedItems);
                     m_FormMain.UpdateWindowMenuList();
                     fo.Visible = true;
                 }
@@ -372,9 +372,9 @@ namespace GenieClient
                     m_ItemChanged = true;
                 }
             }
-            #pragma warning disable CS0168
-            catch (Exception ex)
-            #pragma warning restore CS0168
+#pragma warning disable CS0168
+            catch (Exception exp)
+#pragma warning restore CS0168
             {
                 TextBoxFont.Text = "";
                 TextBoxFont.Tag = null;
